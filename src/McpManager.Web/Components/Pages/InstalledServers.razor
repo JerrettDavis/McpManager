@@ -1,0 +1,126 @@
+@page "/servers/installed"
+@using McpManager.Core.Interfaces
+@using McpManager.Core.Models
+@inject IServerManager ServerManager
+@inject IInstallationManager InstallationManager
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Installed Servers</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h1>📦 Installed MCP Servers</h1>
+            <p class="lead">Manage your locally installed MCP servers</p>
+        </div>
+    </div>
+
+    @if (!installedServers.Any())
+    {
+        <div class="alert alert-info">
+            <h4 class="alert-heading">No servers installed yet</h4>
+            <p>You haven't installed any MCP servers yet. Browse the registry to find and install servers.</p>
+            <hr />
+            <a href="/servers/browse" class="btn btn-primary">Browse Servers</a>
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var server in installedServers)
+            {
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">@server.Name</h5>
+                            <h6 class="card-subtitle mb-2 text-muted">v@server.Version</h6>
+                            <p class="card-text">@server.Description</p>
+                            
+                            <div class="mb-2">
+                                @foreach (var tag in server.Tags.Take(3))
+                                {
+                                    <span class="badge bg-secondary me-1">@tag</span>
+                                }
+                            </div>
+
+                            <div class="mt-3">
+                                <small class="text-muted">
+                                    <strong>Installed:</strong> @FormatDate(server.InstalledAt)
+                                </small>
+                            </div>
+
+                            @{
+                                var installations = serverInstallations
+                                    .Where(i => i.ServerId == server.Id)
+                                    .ToList();
+                            }
+
+                            @if (installations.Any())
+                            {
+                                <div class="mt-3">
+                                    <strong>Configured for:</strong>
+                                    <ul class="mb-0">
+                                        @foreach (var installation in installations)
+                                        {
+                                            <li>
+                                                <span class="badge @(installation.IsEnabled ? "bg-success" : "bg-secondary")">
+                                                    @installation.AgentId
+                                                </span>
+                                            </li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            <button class="btn btn-outline-danger btn-sm w-100" @onclick="() => UninstallServerAsync(server.Id)">
+                                🗑️ Uninstall
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<McpServer> installedServers = new();
+    private List<ServerInstallation> serverInstallations = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        var servers = await ServerManager.GetInstalledServersAsync();
+        installedServers = servers.ToList();
+
+        var installations = await InstallationManager.GetAllInstallationsAsync();
+        serverInstallations = installations.ToList();
+    }
+
+    private async Task UninstallServerAsync(string serverId)
+    {
+        await ServerManager.UninstallServerAsync(serverId);
+        await LoadDataAsync();
+    }
+
+    private static string FormatDate(DateTime? date)
+    {
+        if (!date.HasValue) return "unknown";
+        var days = (DateTime.UtcNow - date.Value).Days;
+        return days switch
+        {
+            0 => "today",
+            1 => "yesterday",
+            < 7 => $"{days} days ago",
+            < 30 => $"{days / 7} weeks ago",
+            < 365 => $"{days / 30} months ago",
+            _ => $"{days / 365} years ago"
+        };
+    }
+}

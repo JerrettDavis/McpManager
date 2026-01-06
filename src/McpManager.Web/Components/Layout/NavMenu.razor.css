@@ -1,0 +1,134 @@
+.nav-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 1.5rem 0;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0 1.5rem 2rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 1.5rem;
+}
+
+.brand-icon {
+    font-size: 2rem;
+    line-height: 1;
+}
+
+.brand-text {
+    flex: 1;
+}
+
+.brand-name {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+
+.brand-subtitle {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    line-height: 1.4;
+}
+
+.nav {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0 1rem;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.9375rem;
+    transition: all var(--transition-fast);
+    position: relative;
+}
+
+.nav-link:hover {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    transform: translateX(2px);
+}
+
+.nav-link.active {
+    background-color: var(--primary-color);
+    color: var(--text-inverse);
+    box-shadow: var(--shadow);
+}
+
+.nav-link.active:hover {
+    background-color: var(--primary-dark);
+}
+
+.nav-icon {
+    font-size: 1.25rem;
+    line-height: 1;
+    width: 1.5rem;
+    text-align: center;
+}
+
+.nav-label {
+    flex: 1;
+}
+
+.nav-footer {
+    padding: 1.5rem 1.5rem 0 1.5rem;
+    border-top: 1px solid var(--border-color);
+    margin-top: 1.5rem;
+}
+
+.version-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+}
+
+.version-label {
+    font-weight: 600;
+}
+
+.version-number {
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+    padding: 0.25rem 0.5rem;
+    background-color: var(--bg-tertiary);
+    border-radius: 4px;
+}
+
+@media (max-width: 640px) {
+    .nav-container {
+        padding: 1rem 0;
+    }
+    
+    .brand {
+        padding: 0 1rem 1rem 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .brand-name {
+        font-size: 1rem;
+    }
+    
+    .nav {
+        padding: 0 0.75rem;
+    }
+    
+    .nav-link {
+        padding: 0.625rem 0.875rem;
+    }
+}

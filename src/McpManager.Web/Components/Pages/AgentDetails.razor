@@ -1,0 +1,218 @@
+@page "/agents/{AgentId}"
+@using McpManager.Core.Interfaces
+@using McpManager.Core.Models
+@inject IAgentManager AgentManager
+@inject IServerManager ServerManager
+@inject IInstallationManager InstallationManager
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Manage Agent - @agentName</PageTitle>
+
+<div class="container-fluid">
+    @if (agent == null)
+    {
+        <div class="alert alert-danger">
+            <h4>Agent Not Found</h4>
+            <p>The requested agent could not be found.</p>
+            <a href="/agents" class="btn btn-primary">Back to Agents</a>
+        </div>
+    }
+    else
+    {
+        <div class="row mb-4">
+            <div class="col">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="/agents">Agents</a></li>
+                        <li class="breadcrumb-item active">@agent.Name</li>
+                    </ol>
+                </nav>
+                <h1>🤖 @agent.Name</h1>
+                <p class="lead">Manage MCP servers for this agent</p>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Installed Servers</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (!installedServers.Any())
+                        {
+                            <div class="alert alert-info mb-0">
+                                <strong>No servers installed.</strong> Install servers from the <a href="/servers/browse">browse page</a>.
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Server Name</th>
+                                            <th>Version</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var server in installedServers)
+                                        {
+                                            var installation = serverInstallations
+                                                .FirstOrDefault(i => i.ServerId == server.Id && i.AgentId == AgentId);
+                                            var isConfigured = installation != null;
+                                            var isEnabled = installation?.IsEnabled ?? false;
+
+                                            <tr>
+                                                <td>
+                                                    <strong>@server.Name</strong>
+                                                    <div class="small text-muted">@server.Description</div>
+                                                </td>
+                                                <td>@server.Version</td>
+                                                <td>
+                                                    @if (isConfigured)
+                                                    {
+                                                        <span class="badge @(isEnabled ? "bg-success" : "bg-warning")">
+                                                            @(isEnabled ? "✓ Enabled" : "⏸ Disabled")
+                                                        </span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-secondary">Not Configured</span>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    @if (isConfigured)
+                                                    {
+                                                        <div class="btn-group btn-group-sm">
+                                                            <button class="btn btn-outline-primary" 
+                                                                    @onclick="() => ToggleServerAsync(server.Id)">
+                                                                @(isEnabled ? "⏸ Disable" : "▶ Enable")
+                                                            </button>
+                                                            <button class="btn btn-outline-danger" 
+                                                                    @onclick="() => RemoveServerAsync(server.Id)">
+                                                                🗑️ Remove
+                                                            </button>
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <button class="btn btn-sm btn-success" 
+                                                                @onclick="() => AddServerAsync(server.Id)">
+                                                            ➕ Add to Agent
+                                                        </button>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">Agent Details</h5>
+                    </div>
+                    <div class="card-body">
+                        <dl>
+                            <dt>Agent Type</dt>
+                            <dd>@agent.Type</dd>
+
+                            <dt>Status</dt>
+                            <dd><span class="badge bg-success">✓ Detected</span></dd>
+
+                            <dt>Configured Servers</dt>
+                            <dd>@serverInstallations.Count(i => i.AgentId == AgentId)</dd>
+
+                            <dt>Active Servers</dt>
+                            <dd>@serverInstallations.Count(i => i.AgentId == AgentId && i.IsEnabled)</dd>
+
+                            <dt>Config Path</dt>
+                            <dd class="small font-monospace text-break">@agent.ConfigPath</dd>
+                        </dl>
+                    </div>
+                </div>
+
+                <div class="card mt-3">
+                    <div class="card-body">
+                        <h6 class="card-title">Quick Actions</h6>
+                        <div class="d-grid gap-2">
+                            <a href="/servers/browse" class="btn btn-primary btn-sm">
+                                🔍 Browse More Servers
+                            </a>
+                            <button class="btn btn-outline-secondary btn-sm" @onclick="RefreshDataAsync">
+                                🔄 Refresh
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string AgentId { get; set; } = string.Empty;
+
+    private Agent? agent;
+    private string agentName = string.Empty;
+    private List<McpServer> installedServers = new();
+    private List<ServerInstallation> serverInstallations = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        agent = await AgentManager.GetAgentByIdAsync(AgentId);
+        agentName = agent?.Name ?? "Unknown Agent";
+
+        if (agent != null)
+        {
+            var servers = await ServerManager.GetInstalledServersAsync();
+            installedServers = servers.ToList();
+
+            var installations = await InstallationManager.GetInstallationsByAgentIdAsync(AgentId);
+            serverInstallations = installations.ToList();
+        }
+    }
+
+    private async Task AddServerAsync(string serverId)
+    {
+        await InstallationManager.AddServerToAgentAsync(serverId, AgentId);
+        await LoadDataAsync();
+    }
+
+    private async Task RemoveServerAsync(string serverId)
+    {
+        await InstallationManager.RemoveServerFromAgentAsync(serverId, AgentId);
+        await LoadDataAsync();
+    }
+
+    private async Task ToggleServerAsync(string serverId)
+    {
+        await InstallationManager.ToggleServerEnabledAsync(serverId, AgentId);
+        await LoadDataAsync();
+    }
+
+    private async Task RefreshDataAsync()
+    {
+        await LoadDataAsync();
+    }
+}

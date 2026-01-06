@@ -51,4 +51,4 @@ CodeCoverage/
 # NUnit
 *.VisualState.xml
 TestResult.xml
-nunit-*.xml
+nunit-*.xmlsrc/McpManager.Web/wwwroot/lib/
