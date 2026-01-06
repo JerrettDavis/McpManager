@@ -292,13 +292,13 @@ The design system uses Material Design-inspired elevation with multi-layered sha
 
 ### Shadow Levels
 
-The system includes 6 levels of elevation:
-- `--shadow-sm` - Subtle elevation (1dp) for small elements like badges, form controls
-- `--shadow` - Default elevation (2dp) for cards and containers at rest
-- `--shadow-md` - Medium elevation (4dp) for buttons on hover, raised cards
-- `--shadow-lg` - Large elevation (8dp) for floating action buttons, important dialogs
-- `--shadow-xl` - Extra large elevation (16dp) for modals and overlays
-- `--shadow-2xl` - Maximum elevation (24dp) for high-priority overlays
+The system includes 6 levels of elevation inspired by Material Design:
+- `--shadow-sm` - Subtle elevation (Level 1) for small elements like badges, form controls
+- `--shadow` - Default elevation (Level 2) for cards and containers at rest
+- `--shadow-md` - Medium elevation (Level 4) for buttons on hover, raised cards
+- `--shadow-lg` - Large elevation (Level 8) for floating action buttons, important dialogs
+- `--shadow-xl` - Extra large elevation (Level 16) for modals and overlays
+- `--shadow-2xl` - Maximum elevation (Level 24) for high-priority overlays
 
 ### Usage Guidelines
 
