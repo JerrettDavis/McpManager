@@ -38,9 +38,9 @@ public class RegistryCacheRepository : IRegistryCacheRepository
         var lowerQuery = query.ToLowerInvariant();
 
         var entities = await _context.CachedRegistryServers
-            .Where(s => s.Name.ToLower().Contains(lowerQuery) ||
-                       s.Description.ToLower().Contains(lowerQuery) ||
-                       s.TagsJson.ToLower().Contains(lowerQuery))
+            .Where(s => EF.Functions.Like(s.Name, $"%{lowerQuery}%") ||
+                       EF.Functions.Like(s.Description, $"%{lowerQuery}%") ||
+                       EF.Functions.Like(s.TagsJson, $"%{lowerQuery}%"))
             .OrderByDescending(s => s.Score)
             .Take(maxResults)
             .ToListAsync();

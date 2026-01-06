@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using McpManager.Core.Models;
 using McpManager.Infrastructure.Persistence;
 using McpManager.Infrastructure.Persistence.Repositories;
+using Moq;
 using Xunit;
 
 namespace McpManager.Tests.Persistence;
@@ -13,6 +15,7 @@ public class ServerRepositoryTests : IDisposable
 {
     private readonly McpManagerDbContext _context;
     private readonly ServerRepository _repository;
+    private readonly Mock<ILogger<ServerRepository>> _mockLogger;
 
     public ServerRepositoryTests()
     {
@@ -22,7 +25,8 @@ public class ServerRepositoryTests : IDisposable
             .Options;
 
         _context = new McpManagerDbContext(options);
-        _repository = new ServerRepository(_context);
+        _mockLogger = new Mock<ILogger<ServerRepository>>();
+        _repository = new ServerRepository(_context, _mockLogger.Object);
     }
 
     public void Dispose()

@@ -7,7 +7,7 @@ namespace McpManager.Infrastructure.Registries;
 /// Caching wrapper for IServerRegistry that reads from local cache first.
 /// Implements read-through caching pattern.
 /// </summary>
-public class CachedServerRegistry : IServerRegistry
+public class CachedServerRegistry : ICachedServerRegistry
 {
     private readonly IServerRegistry _innerRegistry;
     private readonly IRegistryCacheRepository _cacheRepository;

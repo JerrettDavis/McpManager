@@ -80,7 +80,7 @@ public class RegistryRefreshWorker : BackgroundService
             _logger.LogInformation("Refreshing registry: {RegistryName}", registry.Name);
 
             // Check if this is a cached wrapper - if so, skip it to avoid double-wrapping
-            if (registry is Infrastructure.Registries.CachedServerRegistry)
+            if (registry is ICachedServerRegistry)
             {
                 _logger.LogDebug("Skipping cached wrapper for {RegistryName}", registry.Name);
                 return;

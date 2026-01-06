@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using McpManager.Core.Interfaces;
 using McpManager.Core.Models;
 using McpManager.Infrastructure.Persistence.Entities;
@@ -12,10 +13,12 @@ namespace McpManager.Infrastructure.Persistence.Repositories;
 public class ServerRepository : IServerRepository
 {
     private readonly McpManagerDbContext _context;
+    private readonly ILogger<ServerRepository> _logger;
 
-    public ServerRepository(McpManagerDbContext context)
+    public ServerRepository(McpManagerDbContext context, ILogger<ServerRepository> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
     public async Task<IEnumerable<McpServer>> GetAllAsync()
@@ -83,8 +86,32 @@ public class ServerRepository : IServerRepository
         return await _context.InstalledServers.AnyAsync(s => s.Id == serverId);
     }
 
-    private static McpServer MapToModel(InstalledServerEntity entity)
+    private McpServer MapToModel(InstalledServerEntity entity)
     {
+        List<string> tags;
+        Dictionary<string, string> configuration;
+
+        try
+        {
+            tags = JsonSerializer.Deserialize<List<string>>(entity.TagsJson) ?? new List<string>();
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "Failed to deserialize tags for server {ServerId}. Using empty list.", entity.Id);
+            tags = new List<string>();
+        }
+
+        try
+        {
+            configuration = JsonSerializer.Deserialize<Dictionary<string, string>>(entity.ConfigurationJson) 
+                ?? new Dictionary<string, string>();
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "Failed to deserialize configuration for server {ServerId}. Using empty dictionary.", entity.Id);
+            configuration = new Dictionary<string, string>();
+        }
+
         return new McpServer
         {
             Id = entity.Id,
@@ -94,11 +121,10 @@ public class ServerRepository : IServerRepository
             Author = entity.Author,
             RepositoryUrl = entity.RepositoryUrl,
             InstallCommand = entity.InstallCommand,
-            Tags = JsonSerializer.Deserialize<List<string>>(entity.TagsJson) ?? new List<string>(),
+            Tags = tags,
             IsInstalled = true,
             InstalledAt = entity.InstalledAt,
-            Configuration = JsonSerializer.Deserialize<Dictionary<string, string>>(entity.ConfigurationJson) 
-                ?? new Dictionary<string, string>()
+            Configuration = configuration
         };
     }
 
