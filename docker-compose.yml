@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  mcp-manager:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mcp-manager
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    volumes:
+      # Mount host directories for agent configurations (optional)
+      - ~/.config/Claude:/home/appuser/.config/Claude:ro
+      - ~/.vscode:/home/appuser/.vscode:ro
