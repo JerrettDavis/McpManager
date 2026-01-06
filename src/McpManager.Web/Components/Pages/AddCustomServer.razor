@@ -3,6 +3,7 @@
 @using McpManager.Core.Models
 @using McpManager.Application.Services
 @inject IServerManager ServerManager
+@inject ConfigurationParser ConfigurationParser
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
@@ -197,11 +198,9 @@ Or single server (Codex):
                                 {
                                     <div class="input-group mb-2">
                                         <input type="text" class="form-control" placeholder="KEY" 
-                                               @bind="kvp.v.Key" @bind:event="oninput"
-                                               @onchange="@(() => UpdateEnvVar(kvp.i))" />
+                                               @bind="kvp.v.Key" />
                                         <input type="text" class="form-control" placeholder="value" 
-                                               @bind="kvp.v.Value" @bind:event="oninput"
-                                               @onchange="@(() => UpdateEnvVar(kvp.i))" />
+                                               @bind="kvp.v.Value" />
                                         <button class="btn btn-outline-danger" type="button" 
                                                 @onclick="() => RemoveEnvVar(kvp.i)">
                                             🗑️
@@ -238,8 +237,6 @@ Or single server (Codex):
 </div>
 
 @code {
-    private ConfigurationParser parser = new ConfigurationParser();
-    
     // Tab state
     private string activeTab = "paste";
     
@@ -274,7 +271,7 @@ Or single server (Codex):
         errorMessage = null;
         previewServer = null;
 
-        var (success, server, error) = parser.ParseConfiguration(configText, serverId);
+        var (success, server, error) = ConfigurationParser.ParseConfiguration(configText, serverId);
         
         if (success && server != null)
         {
@@ -362,7 +359,7 @@ Or single server (Codex):
                 .Where(e => !string.IsNullOrWhiteSpace(e.Key))
                 .ToDictionary(e => e.Key, e => e.Value);
 
-            var server = parser.CreateServerFromManualInput(
+            var server = ConfigurationParser.CreateServerFromManualInput(
                 manualId,
                 manualName,
                 manualDescription,
@@ -411,13 +408,6 @@ Or single server (Codex):
         {
             manualEnvVars.RemoveAt(index);
         }
-    }
-
-    private void UpdateEnvVar(int index)
-    {
-        // This method is called when env var values change
-        // Blazor handles the binding automatically
-        StateHasChanged();
     }
 
     private void ResetForm()

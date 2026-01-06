@@ -249,6 +249,6 @@ public class ConfigurationParser
 
     private static string GenerateServerId()
     {
-        return $"custom-{Guid.NewGuid():N}".Substring(0, 20);
+        return $"custom-{Guid.NewGuid():N}";
     }
 }
