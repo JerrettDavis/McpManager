@@ -133,6 +133,33 @@ public class RegistryCacheRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task SearchAsync_EscapesWildcards()
+    {
+        // Arrange
+        var results = new List<ServerSearchResult>
+        {
+            new ServerSearchResult
+            {
+                Server = new McpServer { Id = "server1", Name = "Test%Server" },
+                RegistryName = "TestRegistry"
+            },
+            new ServerSearchResult
+            {
+                Server = new McpServer { Id = "server2", Name = "TestServer" },
+                RegistryName = "TestRegistry"
+            }
+        };
+        await _repository.UpsertManyAsync("TestRegistry", results);
+
+        // Act - Search with wildcard character
+        var found = await _repository.SearchAsync("Test%");
+
+        // Assert - Should only find the exact match with %, not all servers starting with Test
+        Assert.Single(found);
+        Assert.Equal("Test%Server", found.First().Server.Name);
+    }
+
+    [Fact]
     public async Task UpdateRegistryMetadataAsync_CreatesNewMetadata()
     {
         // Act

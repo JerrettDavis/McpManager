@@ -35,17 +35,28 @@ public class RegistryCacheRepository : IRegistryCacheRepository
 
     public async Task<IEnumerable<ServerSearchResult>> SearchAsync(string query, int maxResults = 50)
     {
-        var lowerQuery = query.ToLowerInvariant();
+        // Escape LIKE wildcards to prevent injection
+        var escapedQuery = EscapeLikePattern(query.ToLowerInvariant());
+        var pattern = $"%{escapedQuery}%";
 
         var entities = await _context.CachedRegistryServers
-            .Where(s => EF.Functions.Like(s.Name, $"%{lowerQuery}%") ||
-                       EF.Functions.Like(s.Description, $"%{lowerQuery}%") ||
-                       EF.Functions.Like(s.TagsJson, $"%{lowerQuery}%"))
+            .Where(s => EF.Functions.Like(s.Name, pattern, "\\") ||
+                       EF.Functions.Like(s.Description, pattern, "\\") ||
+                       EF.Functions.Like(s.TagsJson, pattern, "\\"))
             .OrderByDescending(s => s.Score)
             .Take(maxResults)
             .ToListAsync();
 
         return entities.Select(MapToModel);
+    }
+
+    private static string EscapeLikePattern(string input)
+    {
+        // Escape LIKE wildcards using backslash as escape character
+        return input
+            .Replace("\\", "\\\\")  // Escape the escape character first
+            .Replace("%", "\\%")     // Escape percent wildcard
+            .Replace("_", "\\_");    // Escape underscore wildcard
     }
 
     public async Task<ServerSearchResult?> GetByIdAsync(string registryName, string serverId)
