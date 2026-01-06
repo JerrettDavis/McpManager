@@ -1,0 +1,25 @@
+@using McpManager.Core.Interfaces
+@using McpManager.Core.Models
+
+<div class="config-status-badge">
+    @if (IsMatching)
+    {
+        <span class="badge bg-success" title="Configuration matches global server configuration">
+            ✓ Matches Global
+        </span>
+    }
+    else
+    {
+        <span class="badge bg-warning text-dark" title="Configuration differs from global server configuration">
+            ⚠️ Custom Configuration
+        </span>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public bool IsMatching { get; set; }
+
+    [Parameter]
+    public string? Tooltip { get; set; }
+}

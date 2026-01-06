@@ -1,0 +1,303 @@
+@page "/servers/{ServerId}"
+@using McpManager.Core.Interfaces
+@using McpManager.Core.Models
+@using McpManager.Web.Components.Shared
+@inject IServerManager ServerManager
+@inject IInstallationManager InstallationManager
+@inject IAgentManager AgentManager
+@inject IConfigurationService ConfigurationService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Server Configuration - @serverName</PageTitle>
+
+<div class="container-fluid">
+    @if (server == null)
+    {
+        <div class="alert alert-danger">
+            <h4>Server Not Found</h4>
+            <p>The requested server could not be found.</p>
+            <a href="/servers/installed" class="btn btn-primary">Back to Servers</a>
+        </div>
+    }
+    else
+    {
+        <div class="row mb-4">
+            <div class="col">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="/servers/installed">Servers</a></li>
+                        <li class="breadcrumb-item active">@server.Name</li>
+                    </ol>
+                </nav>
+                <h1>⚙️ @server.Name Configuration</h1>
+                <p class="lead">Manage global configuration for this MCP server</p>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Global Configuration</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">
+                            This configuration will be used as the default for all agents using this server.
+                            Agents with matching configurations will be automatically updated when you change this.
+                        </p>
+
+                        <ConfigurationEditor Configuration="@serverConfiguration"
+                                           ConfigurationChanged="@OnConfigurationChanged"
+                                           ReadOnly="false" />
+
+                        @if (configurationChanged)
+                        {
+                            <div class="mt-3">
+                                <button class="btn btn-success me-2" @onclick="SaveConfigurationAsync">
+                                    💾 Save Configuration
+                                </button>
+                                <button class="btn btn-secondary" @onclick="CancelConfiguration">
+                                    ✖️ Cancel
+                                </button>
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrEmpty(saveMessage))
+                        {
+                            <div class="alert @(saveSuccess ? "alert-success" : "alert-danger") mt-3">
+                                @saveMessage
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">Agents Using This Server</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (!installations.Any())
+                        {
+                            <p class="text-muted mb-0">
+                                This server is not currently configured for any agents.
+                            </p>
+                        }
+                        else
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Agent</th>
+                                            <th>Status</th>
+                                            <th>Configuration</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var installation in installations)
+                                        {
+                                            var agent = agents.FirstOrDefault(a => a.Id == installation.AgentId);
+                                            var isMatching = ConfigurationService.DoesAgentConfigMatchGlobal(server, installation);
+
+                                            <tr>
+                                                <td>
+                                                    <strong>@(agent?.Name ?? installation.AgentId)</strong>
+                                                </td>
+                                                <td>
+                                                    @if (installation.IsEnabled)
+                                                    {
+                                                        <span class="badge bg-success">Enabled</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-secondary">Disabled</span>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    <ConfigurationStatusBadge IsMatching="@isMatching" />
+                                                </td>
+                                                <td>
+                                                    <a href="/agents/@installation.AgentId/servers/@server.Id" 
+                                                       class="btn btn-sm btn-outline-primary">
+                                                        ⚙️ Configure
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card mb-3">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0">Server Details</h5>
+                    </div>
+                    <div class="card-body">
+                        <dl class="mb-0">
+                            <dt>Version</dt>
+                            <dd>@server.Version</dd>
+
+                            <dt>Author</dt>
+                            <dd>@server.Author</dd>
+
+                            <dt>Description</dt>
+                            <dd>@server.Description</dd>
+
+                            @if (server.Tags.Any())
+                            {
+                                <dt>Tags</dt>
+                                <dd>
+                                    @foreach (var tag in server.Tags)
+                                    {
+                                        <span class="badge bg-secondary me-1">@tag</span>
+                                    }
+                                </dd>
+                            }
+
+                            <dt>Installed</dt>
+                            <dd>@FormatDate(server.InstalledAt)</dd>
+                        </dl>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title">Propagation Info</h6>
+                        <p class="small text-muted mb-2">
+                            When you update the global configuration, agents with matching configurations 
+                            will be automatically updated. Agents with custom configurations will not be affected.
+                        </p>
+                        <ul class="small mb-0">
+                            <li>@matchingCount agent(s) match global config</li>
+                            <li>@differentCount agent(s) have custom configs</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string ServerId { get; set; } = string.Empty;
+
+    private McpServer? server;
+    private string serverName = string.Empty;
+    private Dictionary<string, string> serverConfiguration = new();
+    private Dictionary<string, string> originalConfiguration = new();
+    private List<ServerInstallation> installations = new();
+    private List<Agent> agents = new();
+    private bool configurationChanged = false;
+    private string saveMessage = string.Empty;
+    private bool saveSuccess = false;
+    private int matchingCount = 0;
+    private int differentCount = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        server = await ServerManager.GetServerByIdAsync(ServerId);
+        serverName = server?.Name ?? "Unknown Server";
+
+        if (server != null)
+        {
+            serverConfiguration = new Dictionary<string, string>(server.Configuration ?? new Dictionary<string, string>());
+            originalConfiguration = new Dictionary<string, string>(serverConfiguration);
+
+            installations = (await InstallationManager.GetInstallationsByServerIdAsync(ServerId)).ToList();
+            
+            var allAgents = await AgentManager.DetectInstalledAgentsAsync();
+            agents = allAgents.ToList();
+
+            // Count matching vs different configurations
+            matchingCount = installations.Count(i => ConfigurationService.DoesAgentConfigMatchGlobal(server, i));
+            differentCount = installations.Count - matchingCount;
+        }
+
+        configurationChanged = false;
+        saveMessage = string.Empty;
+    }
+
+    private void OnConfigurationChanged(Dictionary<string, string> newConfig)
+    {
+        serverConfiguration = newConfig;
+        configurationChanged = !ConfigurationService.AreConfigurationsEqual(serverConfiguration, originalConfiguration);
+        saveMessage = string.Empty;
+    }
+
+    private async Task SaveConfigurationAsync()
+    {
+        if (server == null) return;
+
+        try
+        {
+            // Update the server configuration
+            await ServerManager.UpdateServerConfigurationAsync(ServerId, serverConfiguration);
+
+            // Propagate to matching installations
+            var updatedInstallations = await ConfigurationService.PropagateConfigurationUpdateAsync(
+                ServerId,
+                originalConfiguration,
+                serverConfiguration);
+
+            var count = updatedInstallations.Count();
+            
+            saveSuccess = true;
+            if (count > 0)
+            {
+                saveMessage = $"Configuration saved successfully! {count} agent installation(s) were also updated.";
+            }
+            else
+            {
+                saveMessage = "Configuration saved successfully! No agent installations were updated (none matched the previous global config).";
+            }
+
+            // Reload data to refresh the page
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            saveSuccess = false;
+            saveMessage = $"Error saving configuration: {ex.Message}";
+        }
+    }
+
+    private void CancelConfiguration()
+    {
+        serverConfiguration = new Dictionary<string, string>(originalConfiguration);
+        configurationChanged = false;
+        saveMessage = string.Empty;
+    }
+
+    private static string FormatDate(DateTime? date)
+    {
+        if (!date.HasValue) return "unknown";
+        var days = (DateTime.UtcNow - date.Value).Days;
+        return days switch
+        {
+            0 => "today",
+            1 => "yesterday",
+            < 7 => $"{days} days ago",
+            < 30 => $"{days / 7} weeks ago",
+            < 365 => $"{days / 30} months ago",
+            _ => $"{days / 365} years ago"
+        };
+    }
+}
