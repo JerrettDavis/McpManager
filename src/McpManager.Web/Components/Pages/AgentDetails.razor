@@ -88,6 +88,10 @@
                                                     @if (isConfigured)
                                                     {
                                                         <div class="btn-group btn-group-sm">
+                                                            <a href="/agents/@AgentId/servers/@server.Id" 
+                                                               class="btn btn-outline-secondary">
+                                                                ⚙️
+                                                            </a>
                                                             <button class="btn btn-outline-primary" 
                                                                     @onclick="() => ToggleServerAsync(server.Id)">
                                                                 @(isEnabled ? "⏸ Disable" : "▶ Enable")

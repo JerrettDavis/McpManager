@@ -1,0 +1,365 @@
+@page "/agents/{AgentId}/servers/{ServerId}"
+@using McpManager.Core.Interfaces
+@using McpManager.Core.Models
+@using McpManager.Web.Components.Shared
+@inject IServerManager ServerManager
+@inject IInstallationManager InstallationManager
+@inject IAgentManager AgentManager
+@inject IConfigurationService ConfigurationService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Agent Server Configuration</PageTitle>
+
+<div class="container-fluid">
+    @if (server == null || agent == null)
+    {
+        <div class="alert alert-danger">
+            <h4>Not Found</h4>
+            <p>The requested server or agent could not be found.</p>
+            <a href="/agents" class="btn btn-primary">Back to Agents</a>
+        </div>
+    }
+    else
+    {
+        <div class="row mb-4">
+            <div class="col">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="/agents">Agents</a></li>
+                        <li class="breadcrumb-item"><a href="/agents/@AgentId">@agent.Name</a></li>
+                        <li class="breadcrumb-item active">@server.Name Configuration</li>
+                    </ol>
+                </nav>
+                <h1>⚙️ @server.Name for @agent.Name</h1>
+                <p class="lead">Configure this MCP server specifically for @agent.Name</p>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Agent-Specific Configuration</h5>
+                        @if (installation != null)
+                        {
+                            <ConfigurationStatusBadge IsMatching="@isMatchingGlobal" />
+                        }
+                    </div>
+                    <div class="card-body">
+                        @if (installation == null)
+                        {
+                            <div class="alert alert-warning">
+                                <p><strong>This server is not configured for this agent yet.</strong></p>
+                                <p class="mb-0">Would you like to add it?</p>
+                                <button class="btn btn-primary mt-2" @onclick="AddServerToAgentAsync">
+                                    ➕ Add Server to Agent
+                                </button>
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-muted">
+                                Configure settings specifically for this agent. 
+                                @if (isMatchingGlobal)
+                                {
+                                    <span>
+                                        This configuration currently matches the global server configuration. 
+                                        Changes here will create an agent-specific override.
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span>
+                                        This configuration is customized for this agent and differs from the global configuration.
+                                    </span>
+                                }
+                            </p>
+
+                            <ConfigurationEditor Configuration="@agentConfiguration"
+                                               ConfigurationChanged="@OnConfigurationChanged"
+                                               ReadOnly="false" />
+
+                            @if (configurationChanged)
+                            {
+                                <div class="mt-3">
+                                    <button class="btn btn-success me-2" @onclick="SaveConfigurationAsync">
+                                        💾 Save Agent Configuration
+                                    </button>
+                                    <button class="btn btn-secondary me-2" @onclick="CancelConfiguration">
+                                        ✖️ Cancel
+                                    </button>
+                                    @if (!isMatchingGlobal)
+                                    {
+                                        <button class="btn btn-outline-warning" @onclick="ResetToGlobalAsync">
+                                            🔄 Reset to Global Configuration
+                                        </button>
+                                    }
+                                </div>
+                            }
+                            else if (!isMatchingGlobal)
+                            {
+                                <div class="mt-3">
+                                    <button class="btn btn-outline-warning" @onclick="ResetToGlobalAsync">
+                                        🔄 Reset to Global Configuration
+                                    </button>
+                                </div>
+                            }
+
+                            @if (!string.IsNullOrEmpty(saveMessage))
+                            {
+                                <div class="alert @(saveSuccess ? "alert-success" : "alert-danger") mt-3">
+                                    @saveMessage
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+
+                @if (installation != null && !isMatchingGlobal)
+                {
+                    <div class="card mb-4">
+                        <div class="card-header bg-warning text-dark">
+                            <h5 class="mb-0">⚠️ Configuration Differences</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-2">This agent's configuration differs from the global configuration:</p>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>Global Configuration:</h6>
+                                    <pre class="bg-light p-2 small">@ConfigurationService.SerializeConfiguration(server.Configuration ?? new())</pre>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>Agent Configuration:</h6>
+                                    <pre class="bg-light p-2 small">@ConfigurationService.SerializeConfiguration(installation.AgentSpecificConfig)</pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="col-md-4">
+                <div class="card mb-3">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0">Agent Details</h5>
+                    </div>
+                    <div class="card-body">
+                        <dl class="mb-0">
+                            <dt>Agent</dt>
+                            <dd>@agent.Name</dd>
+
+                            <dt>Type</dt>
+                            <dd>@agent.Type</dd>
+
+                            <dt>Status</dt>
+                            <dd>
+                                @if (installation != null)
+                                {
+                                    @if (installation.IsEnabled)
+                                    {
+                                        <span class="badge bg-success">Enabled</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Disabled</span>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning">Not Configured</span>
+                                }
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">Server Details</h5>
+                    </div>
+                    <div class="card-body">
+                        <dl class="mb-0">
+                            <dt>Server</dt>
+                            <dd>@server.Name</dd>
+
+                            <dt>Version</dt>
+                            <dd>@server.Version</dd>
+
+                            <dt>Author</dt>
+                            <dd>@server.Author</dd>
+                        </dl>
+                        <div class="mt-2">
+                            <a href="/servers/@server.Id" class="btn btn-sm btn-outline-primary w-100">
+                                View Global Configuration
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title">Quick Actions</h6>
+                        <div class="d-grid gap-2">
+                            <a href="/agents/@AgentId" class="btn btn-outline-secondary btn-sm">
+                                ← Back to Agent
+                            </a>
+                            @if (installation != null)
+                            {
+                                <button class="btn btn-outline-primary btn-sm" @onclick="ToggleEnabledAsync">
+                                    @(installation.IsEnabled ? "⏸ Disable" : "▶ Enable") Server
+                                </button>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string AgentId { get; set; } = string.Empty;
+
+    [Parameter]
+    public string ServerId { get; set; } = string.Empty;
+
+    private McpServer? server;
+    private Agent? agent;
+    private ServerInstallation? installation;
+    private Dictionary<string, string> agentConfiguration = new();
+    private Dictionary<string, string> originalConfiguration = new();
+    private bool configurationChanged = false;
+    private bool isMatchingGlobal = false;
+    private string saveMessage = string.Empty;
+    private bool saveSuccess = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        server = await ServerManager.GetServerByIdAsync(ServerId);
+        agent = await AgentManager.GetAgentByIdAsync(AgentId);
+
+        if (server != null && agent != null)
+        {
+            var installations = await InstallationManager.GetInstallationsByAgentIdAsync(AgentId);
+            installation = installations.FirstOrDefault(i => i.ServerId == ServerId);
+
+            if (installation != null)
+            {
+                agentConfiguration = new Dictionary<string, string>(installation.AgentSpecificConfig ?? new Dictionary<string, string>());
+                
+                // If agent config is empty, use global config
+                if (!agentConfiguration.Any())
+                {
+                    agentConfiguration = new Dictionary<string, string>(server.Configuration ?? new Dictionary<string, string>());
+                }
+
+                originalConfiguration = new Dictionary<string, string>(agentConfiguration);
+                isMatchingGlobal = ConfigurationService.DoesAgentConfigMatchGlobal(server, installation);
+            }
+        }
+
+        configurationChanged = false;
+        saveMessage = string.Empty;
+    }
+
+    private async Task AddServerToAgentAsync()
+    {
+        if (server == null || agent == null) return;
+
+        try
+        {
+            // Add server to agent with global configuration
+            var config = new Dictionary<string, string>(server.Configuration ?? new Dictionary<string, string>());
+            await InstallationManager.AddServerToAgentAsync(ServerId, AgentId, config);
+
+            saveSuccess = true;
+            saveMessage = "Server added to agent successfully!";
+
+            // Reload
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            saveSuccess = false;
+            saveMessage = $"Error adding server to agent: {ex.Message}";
+        }
+    }
+
+    private void OnConfigurationChanged(Dictionary<string, string> newConfig)
+    {
+        agentConfiguration = newConfig;
+        configurationChanged = !ConfigurationService.AreConfigurationsEqual(agentConfiguration, originalConfiguration);
+        saveMessage = string.Empty;
+    }
+
+    private async Task SaveConfigurationAsync()
+    {
+        if (installation == null) return;
+
+        try
+        {
+            await InstallationManager.UpdateInstallationConfigAsync(installation.Id, agentConfiguration);
+
+            saveSuccess = true;
+            saveMessage = "Agent-specific configuration saved successfully!";
+
+            // Reload
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            saveSuccess = false;
+            saveMessage = $"Error saving configuration: {ex.Message}";
+        }
+    }
+
+    private async Task ResetToGlobalAsync()
+    {
+        if (server == null || installation == null) return;
+
+        try
+        {
+            var globalConfig = new Dictionary<string, string>(server.Configuration ?? new Dictionary<string, string>());
+            await InstallationManager.UpdateInstallationConfigAsync(installation.Id, globalConfig);
+
+            saveSuccess = true;
+            saveMessage = "Configuration reset to global settings!";
+
+            // Reload
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            saveSuccess = false;
+            saveMessage = $"Error resetting configuration: {ex.Message}";
+        }
+    }
+
+    private void CancelConfiguration()
+    {
+        agentConfiguration = new Dictionary<string, string>(originalConfiguration);
+        configurationChanged = false;
+        saveMessage = string.Empty;
+    }
+
+    private async Task ToggleEnabledAsync()
+    {
+        if (installation == null) return;
+
+        await InstallationManager.ToggleServerEnabledAsync(ServerId, AgentId);
+        await LoadDataAsync();
+    }
+}
