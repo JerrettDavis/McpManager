@@ -107,18 +107,15 @@ public class DesktopAppBuildTests : IDisposable
     }
 
     [Fact]
-    public void Desktop_Program_Should_Configure_Services()
+    public void Desktop_Program_Should_Use_Shared_Service_Extensions()
     {
         var projectDir = Path.GetDirectoryName(_projectPath)!;
         var programPath = Path.Combine(projectDir, "Program.cs");
         var programContent = File.ReadAllText(programPath);
         
-        // Verify key service registrations
+        // Verify use of shared service registration
+        Assert.Contains("AddMcpManagerServices", programContent);
         Assert.Contains("PhotinoBlazorAppBuilder", programContent);
-        Assert.Contains("IServerManager", programContent);
-        Assert.Contains("IAgentManager", programContent);
-        Assert.Contains("IConfigurationService", programContent);
-        Assert.Contains("McpManagerDbContext", programContent);
     }
 
     [Fact]

@@ -209,10 +209,6 @@ jobs:
         2. Extract: \`tar -xzf mcpmanager-server-linux-x64.tar.gz\`
         3. Run: \`./McpManager.Web\`
         4. Navigate to http://localhost:5000
-        1. Download \`mcpmanager-linux-x64.tar.gz\`
-        2. Extract: \`tar -xzf mcpmanager-linux-x64.tar.gz\`
-        3. Run: \`./McpManager.Web\`
-        4. Navigate to http://localhost:5000
         
         ### Changes
         
