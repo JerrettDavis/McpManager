@@ -15,7 +15,28 @@ public class ConfigurationWorkflowTests
     public async Task ConfigurationWorkflow_GlobalUpdatePropagation_WorksCorrectly()
     {
         // Arrange - Set up the services
-        var serverManager = new ServerManager();
+        var mockRepository = new Mock<IServerRepository>();
+        var installedServers = new List<McpServer>();
+        
+        mockRepository.Setup(r => r.GetAllAsync()).ReturnsAsync(() => installedServers);
+        mockRepository.Setup(r => r.GetByIdAsync(It.IsAny<string>()))
+            .ReturnsAsync((string id) => installedServers.FirstOrDefault(s => s.Id == id));
+        mockRepository.Setup(r => r.AddAsync(It.IsAny<McpServer>()))
+            .Callback<McpServer>(s => installedServers.Add(s))
+            .ReturnsAsync(true);
+        mockRepository.Setup(r => r.UpdateAsync(It.IsAny<McpServer>()))
+            .Callback<McpServer>(s => {
+                var existing = installedServers.FirstOrDefault(x => x.Id == s.Id);
+                if (existing != null) {
+                    var index = installedServers.IndexOf(existing);
+                    installedServers[index] = s;
+                }
+            })
+            .ReturnsAsync(true);
+        mockRepository.Setup(r => r.ExistsAsync(It.IsAny<string>()))
+            .ReturnsAsync((string id) => installedServers.Any(s => s.Id == id));
+            
+        var serverManager = new ServerManager(mockRepository.Object);
         var mockAgentManager = new Mock<IAgentManager>();
         var mockClaudeConnector = new Mock<IAgentConnector>();
         var mockCopilotConnector = new Mock<IAgentConnector>();
@@ -106,7 +127,28 @@ public class ConfigurationWorkflowTests
     public async Task ConfigurationWorkflow_ResetToGlobal_WorksCorrectly()
     {
         // Arrange
-        var serverManager = new ServerManager();
+        var mockRepository = new Mock<IServerRepository>();
+        var installedServers = new List<McpServer>();
+        
+        mockRepository.Setup(r => r.GetAllAsync()).ReturnsAsync(() => installedServers);
+        mockRepository.Setup(r => r.GetByIdAsync(It.IsAny<string>()))
+            .ReturnsAsync((string id) => installedServers.FirstOrDefault(s => s.Id == id));
+        mockRepository.Setup(r => r.AddAsync(It.IsAny<McpServer>()))
+            .Callback<McpServer>(s => installedServers.Add(s))
+            .ReturnsAsync(true);
+        mockRepository.Setup(r => r.UpdateAsync(It.IsAny<McpServer>()))
+            .Callback<McpServer>(s => {
+                var existing = installedServers.FirstOrDefault(x => x.Id == s.Id);
+                if (existing != null) {
+                    var index = installedServers.IndexOf(existing);
+                    installedServers[index] = s;
+                }
+            })
+            .ReturnsAsync(true);
+        mockRepository.Setup(r => r.ExistsAsync(It.IsAny<string>()))
+            .ReturnsAsync((string id) => installedServers.Any(s => s.Id == id));
+            
+        var serverManager = new ServerManager(mockRepository.Object);
         var mockAgentManager = new Mock<IAgentManager>();
         var mockConnector = new Mock<IAgentConnector>();
         mockConnector.Setup(c => c.AgentType).Returns(AgentType.Claude);
@@ -191,7 +233,28 @@ public class ConfigurationWorkflowTests
     public async Task ConfigurationWorkflow_MultipleAgents_PropagationSelectivelyUpdates()
     {
         // Arrange
-        var serverManager = new ServerManager();
+        var mockRepository = new Mock<IServerRepository>();
+        var installedServers = new List<McpServer>();
+        
+        mockRepository.Setup(r => r.GetAllAsync()).ReturnsAsync(() => installedServers);
+        mockRepository.Setup(r => r.GetByIdAsync(It.IsAny<string>()))
+            .ReturnsAsync((string id) => installedServers.FirstOrDefault(s => s.Id == id));
+        mockRepository.Setup(r => r.AddAsync(It.IsAny<McpServer>()))
+            .Callback<McpServer>(s => installedServers.Add(s))
+            .ReturnsAsync(true);
+        mockRepository.Setup(r => r.UpdateAsync(It.IsAny<McpServer>()))
+            .Callback<McpServer>(s => {
+                var existing = installedServers.FirstOrDefault(x => x.Id == s.Id);
+                if (existing != null) {
+                    var index = installedServers.IndexOf(existing);
+                    installedServers[index] = s;
+                }
+            })
+            .ReturnsAsync(true);
+        mockRepository.Setup(r => r.ExistsAsync(It.IsAny<string>()))
+            .ReturnsAsync((string id) => installedServers.Any(s => s.Id == id));
+            
+        var serverManager = new ServerManager(mockRepository.Object);
         var mockAgentManager = new Mock<IAgentManager>();
         var mockConnector = new Mock<IAgentConnector>();
         mockConnector.Setup(c => c.AgentType).Returns(AgentType.Claude);
