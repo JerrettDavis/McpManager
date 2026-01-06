@@ -10,6 +10,13 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
+// Register HttpClient for MCP registries
+builder.Services.AddHttpClient<IServerRegistry, McpGetRegistry>(client =>
+{
+    client.BaseAddress = new Uri("https://mcp-get.com/");
+    client.DefaultRequestHeaders.Add("User-Agent", "McpManager/1.0");
+});
+
 // Register application services (Singleton for in-memory state)
 builder.Services.AddSingleton<IServerManager, ServerManager>();
 builder.Services.AddSingleton<IAgentManager, AgentManager>();
@@ -19,8 +26,10 @@ builder.Services.AddSingleton<IServerMonitor, ServerMonitor>();
 // Register agent connectors
 builder.Services.AddSingleton<IAgentConnector, ClaudeConnector>();
 builder.Services.AddSingleton<IAgentConnector, CopilotConnector>();
+builder.Services.AddSingleton<IAgentConnector, ClaudeCodeConnector>();
+builder.Services.AddSingleton<IAgentConnector, CodexConnector>();
 
-// Register server registries
+// Register server registries (keep mock as fallback)
 builder.Services.AddSingleton<IServerRegistry, MockServerRegistry>();
 
 var app = builder.Build();

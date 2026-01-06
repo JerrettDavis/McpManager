@@ -74,14 +74,9 @@
                             }
                         </div>
                         <div class="card-footer bg-transparent">
-                            <div class="btn-group w-100" role="group">
-                                <button class="btn btn-outline-primary btn-sm" @onclick="() => ConfigureServer(server)">
-                                    ⚙️ Configure
-                                </button>
-                                <button class="btn btn-outline-danger btn-sm" @onclick="() => UninstallServerAsync(server.Id)">
-                                    🗑️ Uninstall
-                                </button>
-                            </div>
+                            <button class="btn btn-outline-danger btn-sm w-100" @onclick="() => UninstallServerAsync(server.Id)">
+                                🗑️ Uninstall
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -112,11 +107,6 @@
     {
         await ServerManager.UninstallServerAsync(serverId);
         await LoadDataAsync();
-    }
-
-    private void ConfigureServer(McpServer server)
-    {
-        Navigation.NavigateTo($"/servers/{server.Id}/configure");
     }
 
     private static string FormatDate(DateTime? date)
