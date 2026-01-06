@@ -5,57 +5,53 @@ namespace McpManager.Application.Services;
 
 /// <summary>
 /// Service for managing MCP servers.
-/// Implements business logic and orchestration.
+/// Implements business logic and orchestration with persistent storage.
 /// </summary>
 public class ServerManager : IServerManager
 {
-    private readonly List<McpServer> _installedServers = new();
+    private readonly IServerRepository _repository;
 
-    public Task<IEnumerable<McpServer>> GetInstalledServersAsync()
+    public ServerManager(IServerRepository repository)
     {
-        return Task.FromResult<IEnumerable<McpServer>>(_installedServers);
+        _repository = repository;
     }
 
-    public Task<McpServer?> GetServerByIdAsync(string serverId)
+    public async Task<IEnumerable<McpServer>> GetInstalledServersAsync()
     {
-        var server = _installedServers.FirstOrDefault(s => s.Id == serverId);
-        return Task.FromResult(server);
+        return await _repository.GetAllAsync();
     }
 
-    public Task<bool> InstallServerAsync(McpServer server)
+    public async Task<McpServer?> GetServerByIdAsync(string serverId)
     {
-        if (_installedServers.Any(s => s.Id == server.Id))
+        return await _repository.GetByIdAsync(serverId);
+    }
+
+    public async Task<bool> InstallServerAsync(McpServer server)
+    {
+        if (await _repository.ExistsAsync(server.Id))
         {
-            return Task.FromResult(false);
+            return false;
         }
 
         server.IsInstalled = true;
         server.InstalledAt = DateTime.UtcNow;
-        _installedServers.Add(server);
-        return Task.FromResult(true);
+        return await _repository.AddAsync(server);
     }
 
-    public Task<bool> UninstallServerAsync(string serverId)
+    public async Task<bool> UninstallServerAsync(string serverId)
     {
-        var server = _installedServers.FirstOrDefault(s => s.Id == serverId);
-        if (server == null)
-        {
-            return Task.FromResult(false);
-        }
-
-        _installedServers.Remove(server);
-        return Task.FromResult(true);
+        return await _repository.DeleteAsync(serverId);
     }
 
-    public Task<bool> UpdateServerConfigurationAsync(string serverId, Dictionary<string, string> configuration)
+    public async Task<bool> UpdateServerConfigurationAsync(string serverId, Dictionary<string, string> configuration)
     {
-        var server = _installedServers.FirstOrDefault(s => s.Id == serverId);
+        var server = await _repository.GetByIdAsync(serverId);
         if (server == null)
         {
-            return Task.FromResult(false);
+            return false;
         }
 
         server.Configuration = configuration;
-        return Task.FromResult(true);
+        return await _repository.UpdateAsync(server);
     }
 }
