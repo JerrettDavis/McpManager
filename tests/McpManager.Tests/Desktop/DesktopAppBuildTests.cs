@@ -31,7 +31,7 @@ public class DesktopAppBuildTests : IDisposable
         var result = RunDotNetCommand("build", _projectPath, "--configuration Release");
         
         Assert.Equal(0, result.ExitCode);
-        Assert.DoesNotContain("error", result.Output, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Build succeeded", result.Output, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
