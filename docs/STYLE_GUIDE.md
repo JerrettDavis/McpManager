@@ -2,7 +2,7 @@
 
 ## Overview
 
-MCP Manager uses a modern, comprehensive design system with a soft vaporwave-inspired pastel aesthetic. The color palette features soothing purples, teals, pinks, and blues reminiscent of Material Design's pastel tones. The system supports automatic light/dark themes based on system preferences and provides a consistent, calming visual experience across the application.
+MCP Manager uses a modern, comprehensive design system with a soft vaporwave-inspired pastel aesthetic and Material Design-inspired elevation. The color palette features soothing purples, teals, pinks, and blues reminiscent of Material Design's pastel tones. Multi-layered shadows create depth and visual hierarchy throughout the interface. The system supports automatic light/dark themes based on system preferences and provides a consistent, calming visual experience across the application.
 
 ## Design Principles
 
@@ -13,6 +13,7 @@ MCP Manager uses a modern, comprehensive design system with a soft vaporwave-ins
 5. **Theme-Aware**: Automatic light/dark mode support with vaporwave aesthetics
 6. **Performance**: CSS custom properties for fast theme switching
 7. **Soothing**: Pastel colors that are easy on the eyes and reduce visual fatigue
+8. **Material Depth**: Multi-layered shadows create elevation and visual hierarchy
 
 ## Color System
 
@@ -284,6 +285,44 @@ Standard transition durations:
 - `--transition-slow: 500ms` - Slow, emphasized transitions
 
 Easing: `cubic-bezier(0.4, 0, 0.2, 1)` - Standard easing curve
+
+## Material Design Elevation
+
+The design system uses Material Design-inspired elevation with multi-layered shadows to create depth and visual hierarchy.
+
+### Shadow Levels
+
+The system includes 6 levels of elevation:
+- `--shadow-sm` - Subtle elevation (1dp) for small elements like badges, form controls
+- `--shadow` - Default elevation (2dp) for cards and containers at rest
+- `--shadow-md` - Medium elevation (4dp) for buttons on hover, raised cards
+- `--shadow-lg` - Large elevation (8dp) for floating action buttons, important dialogs
+- `--shadow-xl` - Extra large elevation (16dp) for modals and overlays
+- `--shadow-2xl` - Maximum elevation (24dp) for high-priority overlays
+
+### Usage Guidelines
+
+**Cards:**
+- Base state: `--shadow` for resting elevation
+- Hover state: `--shadow-lg` for interactive feedback
+- Focus-within: `--shadow-xl` for active form context
+
+**Buttons:**
+- Base state: `--shadow-sm` for subtle depth
+- Hover state: `--shadow-md` with translateY(-2px) for elevation
+- Active state: Return to `--shadow-sm` for pressed effect
+
+**Forms:**
+- Base state: `--shadow-sm` for subtle depth
+- Focus state: `--shadow` combined with colored ring for emphasis
+
+**Interactive Lists:**
+- Container: `--shadow-sm` for subtle depth
+- Hover state: `--shadow` on individual items with z-index layering
+
+### Dark Mode Adjustments
+
+In dark mode, shadows are more pronounced (higher opacity) to maintain depth perception against dark backgrounds. The shadow values automatically adjust via CSS custom properties.
 
 ## Animations
 

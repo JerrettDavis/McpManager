@@ -29,12 +29,13 @@
     --border-color: #e8eaf6;
     --border-color-hover: #c5cae9;
     
-    /* Shadows */
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    /* Shadows - Material Design Inspired */
+    --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.12), 0 1px 2px 0 rgb(0 0 0 / 0.24);
+    --shadow: 0 3px 6px 0 rgb(0 0 0 / 0.15), 0 2px 4px 0 rgb(0 0 0 / 0.12);
+    --shadow-md: 0 10px 20px 0 rgb(0 0 0 / 0.15), 0 3px 6px 0 rgb(0 0 0 / 0.10);
+    --shadow-lg: 0 15px 25px 0 rgb(0 0 0 / 0.15), 0 5px 10px 0 rgb(0 0 0 / 0.05);
+    --shadow-xl: 0 20px 40px 0 rgb(0 0 0 / 0.2), 0 8px 16px 0 rgb(0 0 0 / 0.15);
+    --shadow-2xl: 0 25px 50px 0 rgb(0 0 0 / 0.25), 0 10px 20px 0 rgb(0 0 0 / 0.15);
     
     /* Transitions */
     --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -61,12 +62,13 @@
         --border-color: #2a2d5a;
         --border-color-hover: #3d4175;
         
-        /* Adjust shadows for dark mode */
-        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
-        --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.4);
-        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.4);
-        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.4);
-        --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.4), 0 8px 10px -6px rgb(0 0 0 / 0.4);
+        /* Adjust shadows for dark mode - More pronounced */
+        --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px 0 rgb(0 0 0 / 0.6);
+        --shadow: 0 3px 6px 0 rgb(0 0 0 / 0.5), 0 2px 4px 0 rgb(0 0 0 / 0.4);
+        --shadow-md: 0 10px 20px 0 rgb(0 0 0 / 0.6), 0 3px 6px 0 rgb(0 0 0 / 0.4);
+        --shadow-lg: 0 15px 25px 0 rgb(0 0 0 / 0.6), 0 5px 10px 0 rgb(0 0 0 / 0.3);
+        --shadow-xl: 0 20px 40px 0 rgb(0 0 0 / 0.7), 0 8px 16px 0 rgb(0 0 0 / 0.5);
+        --shadow-2xl: 0 25px 50px 0 rgb(0 0 0 / 0.8), 0 10px 20px 0 rgb(0 0 0 / 0.6);
     }
 }
 
@@ -240,7 +242,7 @@ p {
     background-color: var(--bg-elevated);
     border: 1px solid var(--border-color);
     border-radius: 12px;
-    box-shadow: var(--shadow-sm);
+    box-shadow: var(--shadow);
     overflow: hidden;
     transition: all var(--transition);
     height: 100%;
@@ -249,13 +251,13 @@ p {
 }
 
 .card:hover {
-    box-shadow: var(--shadow-md);
-    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-4px);
     border-color: var(--border-color-hover);
 }
 
 .card:focus-within {
-    box-shadow: var(--shadow-lg);
+    box-shadow: var(--shadow-xl);
     border-color: var(--primary-color);
 }
 
@@ -328,15 +330,17 @@ p {
     transition: all var(--transition-fast);
     cursor: pointer;
     text-decoration: none;
+    box-shadow: var(--shadow-sm);
 }
 
 .btn:hover:not(:disabled) {
-    transform: translateY(-1px);
+    transform: translateY(-2px);
     box-shadow: var(--shadow-md);
 }
 
 .btn:active:not(:disabled) {
     transform: translateY(0);
+    box-shadow: var(--shadow-sm);
 }
 
 .btn-sm {
@@ -458,12 +462,13 @@ p {
     border: 1px solid var(--border-color);
     border-radius: 8px;
     transition: all var(--transition-fast);
+    box-shadow: var(--shadow-sm);
 }
 
 .form-control:focus, .form-select:focus, input:focus, select:focus, textarea:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    box-shadow: 0 0 0 3px rgba(156, 136, 255, 0.15), var(--shadow);
 }
 
 .input-group .form-control,
@@ -484,24 +489,25 @@ p {
     border-radius: 10px;
     border: 1px solid;
     animation: slideIn var(--transition);
+    box-shadow: var(--shadow);
 }
 
 .alert-info {
-    background-color: rgba(59, 130, 246, 0.1);
+    background-color: rgba(100, 181, 246, 0.1);
     border-color: var(--info-color);
-    color: var(--info-color);
+    color: #1976d2;
 }
 
 .alert-warning {
-    background-color: rgba(245, 158, 11, 0.1);
+    background-color: rgba(255, 183, 77, 0.1);
     border-color: var(--warning-color);
-    color: #d97706;
+    color: #f57c00;
 }
 
 .alert-danger {
-    background-color: rgba(239, 68, 68, 0.1);
+    background-color: rgba(255, 107, 157, 0.1);
     border-color: var(--danger-color);
-    color: var(--danger-dark);
+    color: #d81b60;
 }
 
 .alert-heading {
@@ -522,6 +528,7 @@ p {
     vertical-align: baseline;
     border-radius: 6px;
     transition: all var(--transition-fast);
+    box-shadow: var(--shadow-sm);
 }
 
 .bg-primary.badge { background-color: var(--primary-color); color: var(--text-inverse); }
@@ -611,6 +618,7 @@ p {
     padding-left: 0;
     margin-bottom: 0;
     border-radius: 8px;
+    box-shadow: var(--shadow-sm);
 }
 
 .list-group-item {
@@ -639,6 +647,8 @@ p {
 .list-group-item:hover {
     background-color: var(--bg-tertiary);
     border-color: var(--border-color-hover);
+    box-shadow: var(--shadow);
+    z-index: 1;
 }
 
 .list-group-item h6 {
@@ -671,19 +681,22 @@ p {
     transition: all var(--transition-fast);
     cursor: pointer;
     font-weight: 500;
+    box-shadow: var(--shadow-sm);
 }
 
 .page-link:hover:not(:disabled) {
     background-color: var(--bg-tertiary);
     border-color: var(--primary-color);
     color: var(--primary-dark);
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
 }
 
 .page-item.active .page-link {
     background-color: var(--primary-color);
     border-color: var(--primary-color);
     color: var(--text-inverse);
+    box-shadow: var(--shadow-md);
 }
 
 .page-item.disabled .page-link {
