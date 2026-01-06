@@ -5,8 +5,10 @@ using System.Text.Json;
 namespace McpManager.Infrastructure.Connectors;
 
 /// <summary>
-/// Connector for Claude Code (https://code.claude.com/docs/en/mcp).
+/// Connector for Claude Code (https://code.claude.com).
 /// Handles Claude Code-specific configuration and MCP server management.
+/// MCP servers are configured in ~/.claude/settings.json under the mcpServers key.
+/// See: https://code.claude.com/docs/en/plugins-reference#mcp-servers
 /// </summary>
 public class ClaudeCodeConnector : IAgentConnector
 {
@@ -14,37 +16,36 @@ public class ClaudeCodeConnector : IAgentConnector
 
     public Task<bool> IsAgentInstalledAsync()
     {
-        // Check for Claude Code installation by looking for the config file or the executable
-        var configPath = GetClaudeCodeConfigPath();
+        // Check for Claude Code installation by looking for settings directory or the executable
+        var settingsDir = GetClaudeSettingsDirectory();
         var claudeExePath = GetClaudeCodeExecutablePath();
         
         return Task.FromResult(
-            File.Exists(configPath) || 
-            Directory.Exists(Path.GetDirectoryName(configPath)) ||
+            Directory.Exists(settingsDir) ||
             File.Exists(claudeExePath)
         );
     }
 
     public Task<string> GetConfigurationPathAsync()
     {
-        return Task.FromResult(GetClaudeCodeConfigPath());
+        return Task.FromResult(GetClaudeSettingsPath());
     }
 
     public async Task<IEnumerable<string>> GetConfiguredServerIdsAsync()
     {
-        var configPath = GetClaudeCodeConfigPath();
-        if (!File.Exists(configPath))
+        var settingsPath = GetClaudeSettingsPath();
+        if (!File.Exists(settingsPath))
         {
             return Enumerable.Empty<string>();
         }
 
         try
         {
-            var json = await File.ReadAllTextAsync(configPath);
-            var config = JsonSerializer.Deserialize<ClaudeCodeConfig>(json);
+            var json = await File.ReadAllTextAsync(settingsPath);
+            var config = JsonSerializer.Deserialize<ClaudeSettingsConfig>(json);
             
-            // Claude Code stores MCP servers in a nested structure
-            return config?.Mcp?.User?.Keys ?? Enumerable.Empty<string>();
+            // Claude Code stores MCP servers in settings.json under mcpServers key
+            return config?.McpServers?.Keys ?? Enumerable.Empty<string>();
         }
         catch
         {
@@ -54,24 +55,23 @@ public class ClaudeCodeConnector : IAgentConnector
 
     public async Task<bool> AddServerToAgentAsync(string serverId, Dictionary<string, string>? config = null)
     {
-        var configPath = GetClaudeCodeConfigPath();
-        ClaudeCodeConfig claudeCodeConfig;
+        var settingsPath = GetClaudeSettingsPath();
+        ClaudeSettingsConfig settings;
 
-        if (File.Exists(configPath))
+        if (File.Exists(settingsPath))
         {
-            var json = await File.ReadAllTextAsync(configPath);
-            claudeCodeConfig = JsonSerializer.Deserialize<ClaudeCodeConfig>(json) ?? new ClaudeCodeConfig();
+            var json = await File.ReadAllTextAsync(settingsPath);
+            settings = JsonSerializer.Deserialize<ClaudeSettingsConfig>(json) ?? new ClaudeSettingsConfig();
         }
         else
         {
-            claudeCodeConfig = new ClaudeCodeConfig();
-            Directory.CreateDirectory(Path.GetDirectoryName(configPath)!);
+            settings = new ClaudeSettingsConfig();
+            Directory.CreateDirectory(Path.GetDirectoryName(settingsPath)!);
         }
 
-        claudeCodeConfig.Mcp ??= new McpSection();
-        claudeCodeConfig.Mcp.User ??= new Dictionary<string, ServerConfig>();
+        settings.McpServers ??= new Dictionary<string, ServerConfig>();
         
-        claudeCodeConfig.Mcp.User[serverId] = new ServerConfig
+        settings.McpServers[serverId] = new ServerConfig
         {
             Command = config?.GetValueOrDefault("command") ?? "npx",
             Args = config?.GetValueOrDefault("args", $"-y {serverId}").Split(' ').ToList(),
@@ -80,72 +80,76 @@ public class ClaudeCodeConnector : IAgentConnector
                 : new Dictionary<string, string>()
         };
 
-        var updatedJson = JsonSerializer.Serialize(claudeCodeConfig, new JsonSerializerOptions { WriteIndented = true });
-        await File.WriteAllTextAsync(configPath, updatedJson);
+        var updatedJson = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
+        await File.WriteAllTextAsync(settingsPath, updatedJson);
 
         return true;
     }
 
     public async Task<bool> RemoveServerFromAgentAsync(string serverId)
     {
-        var configPath = GetClaudeCodeConfigPath();
-        if (!File.Exists(configPath))
+        var settingsPath = GetClaudeSettingsPath();
+        if (!File.Exists(settingsPath))
         {
             return false;
         }
 
-        var json = await File.ReadAllTextAsync(configPath);
-        var claudeCodeConfig = JsonSerializer.Deserialize<ClaudeCodeConfig>(json);
+        var json = await File.ReadAllTextAsync(settingsPath);
+        var settings = JsonSerializer.Deserialize<ClaudeSettingsConfig>(json);
 
-        if (claudeCodeConfig?.Mcp?.User == null || !claudeCodeConfig.Mcp.User.ContainsKey(serverId))
+        if (settings?.McpServers == null || !settings.McpServers.ContainsKey(serverId))
         {
             return false;
         }
 
-        claudeCodeConfig.Mcp.User.Remove(serverId);
+        settings.McpServers.Remove(serverId);
 
-        var updatedJson = JsonSerializer.Serialize(claudeCodeConfig, new JsonSerializerOptions { WriteIndented = true });
-        await File.WriteAllTextAsync(configPath, updatedJson);
+        var updatedJson = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
+        await File.WriteAllTextAsync(settingsPath, updatedJson);
 
         return true;
     }
 
     public async Task<bool> SetServerEnabledAsync(string serverId, bool enabled)
     {
-        var configPath = GetClaudeCodeConfigPath();
-        if (!File.Exists(configPath))
+        var settingsPath = GetClaudeSettingsPath();
+        if (!File.Exists(settingsPath))
         {
             return false;
         }
 
-        var json = await File.ReadAllTextAsync(configPath);
-        var claudeCodeConfig = JsonSerializer.Deserialize<ClaudeCodeConfig>(json);
+        var json = await File.ReadAllTextAsync(settingsPath);
+        var settings = JsonSerializer.Deserialize<ClaudeSettingsConfig>(json);
 
-        if (claudeCodeConfig?.Mcp?.User == null || !claudeCodeConfig.Mcp.User.ContainsKey(serverId))
+        if (settings?.McpServers == null || !settings.McpServers.ContainsKey(serverId))
         {
             return false;
         }
 
         if (enabled)
         {
-            claudeCodeConfig.Mcp.User[serverId].Disabled = null;
+            settings.McpServers[serverId].Disabled = null;
         }
         else
         {
-            claudeCodeConfig.Mcp.User[serverId].Disabled = true;
+            settings.McpServers[serverId].Disabled = true;
         }
 
-        var updatedJson = JsonSerializer.Serialize(claudeCodeConfig, new JsonSerializerOptions { WriteIndented = true });
-        await File.WriteAllTextAsync(configPath, updatedJson);
+        var updatedJson = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
+        await File.WriteAllTextAsync(settingsPath, updatedJson);
 
         return true;
     }
 
-    private static string GetClaudeCodeConfigPath()
+    private static string GetClaudeSettingsDirectory()
     {
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        // Claude Code stores MCP config in ~/.claude.json
-        return Path.Combine(home, ".claude.json");
+        return Path.Combine(home, ".claude");
+    }
+
+    private static string GetClaudeSettingsPath()
+    {
+        return Path.Combine(GetClaudeSettingsDirectory(), "settings.json");
     }
 
     private static string GetClaudeCodeExecutablePath()
@@ -155,16 +159,13 @@ public class ClaudeCodeConnector : IAgentConnector
         return Path.Combine(home, ".local", "bin", "claude.exe");
     }
 
-    private class ClaudeCodeConfig
+    /// <summary>
+    /// Represents the Claude Code settings.json structure.
+    /// See: https://code.claude.com/docs/en/plugins-reference#mcp-servers
+    /// </summary>
+    private class ClaudeSettingsConfig
     {
-        public McpSection? Mcp { get; set; }
-    }
-
-    private class McpSection
-    {
-        // Claude Code uses "user" and "local" scopes for MCP servers
-        public Dictionary<string, ServerConfig>? User { get; set; }
-        public Dictionary<string, ServerConfig>? Local { get; set; }
+        public Dictionary<string, ServerConfig>? McpServers { get; set; }
     }
 
     private class ServerConfig
