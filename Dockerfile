@@ -24,8 +24,8 @@ RUN dotnet publish "McpManager.Web.csproj" -c Release -o /app/publish /p:UseAppH
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
-# Create a non-root user
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+# Create a non-root user (or use existing if UID conflicts)
+RUN useradd -m -u 1001 appuser || useradd -m appuser && chown -R appuser:appuser /app
 USER appuser
 
 # Copy published app
