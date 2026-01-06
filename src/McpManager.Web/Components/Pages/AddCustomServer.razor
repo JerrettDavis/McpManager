@@ -1,0 +1,434 @@
+@page "/servers/add-custom"
+@using McpManager.Core.Interfaces
+@using McpManager.Core.Models
+@using McpManager.Application.Services
+@inject IServerManager ServerManager
+@inject ConfigurationParser ConfigurationParser
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Add Custom MCP Server</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h1>➕ Add Custom MCP Server</h1>
+            <p class="lead">Add a custom MCP server by pasting configuration or filling out a form</p>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <strong>Success!</strong> @successMessage
+            <button type="button" class="btn-close" @onclick="() => successMessage = null"></button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>Error!</strong> @errorMessage
+            <button type="button" class="btn-close" @onclick="() => errorMessage = null"></button>
+        </div>
+    }
+
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <ul class="nav nav-tabs card-header-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link @(activeTab == "paste" ? "active" : "")" 
+                                    @onclick='() => activeTab = "paste"'>
+                                📋 Paste Configuration
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link @(activeTab == "manual" ? "active" : "")" 
+                                    @onclick='() => activeTab = "manual"'>
+                                ✏️ Manual Entry
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="card-body">
+                    @if (activeTab == "paste")
+                    {
+                        <div class="tab-pane-content">
+                            <h5>Paste Configuration Block</h5>
+                            <p class="text-muted">
+                                Paste a configuration block from Claude, Copilot, or Codex. 
+                                We'll automatically detect the format and extract the server information.
+                            </p>
+
+                            <div class="mb-3">
+                                <label for="configText" class="form-label">Configuration JSON:</label>
+                                <textarea class="form-control font-monospace" 
+                                          id="configText" 
+                                          rows="12" 
+                                          @bind="configText"
+                                          placeholder="Example (Claude/Copilot):
+{
+  &quot;mcpServers&quot;: {
+    &quot;my-server&quot;: {
+      &quot;command&quot;: &quot;node&quot;,
+      &quot;args&quot;: &quot;/path/to/server/index.js&quot;
+    }
+  }
+}
+
+Or single server (Codex):
+{
+  &quot;command&quot;: &quot;npx&quot;,
+  &quot;args&quot;: [&quot;server-filesystem&quot;, &quot;/path&quot;],
+  &quot;env&quot;: {
+    &quot;API_KEY&quot;: &quot;your-key&quot;
+  }
+}"></textarea>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="serverId" class="form-label">
+                                    Server ID (optional):
+                                    <small class="text-muted">Leave blank to auto-generate or extract from config</small>
+                                </label>
+                                <input type="text" class="form-control" id="serverId" @bind="serverId" 
+                                       placeholder="e.g., my-custom-server" />
+                            </div>
+
+                            @if (previewServer != null)
+                            {
+                                <div class="alert alert-info">
+                                    <h6>Preview:</h6>
+                                    <ul class="mb-0">
+                                        <li><strong>ID:</strong> @previewServer.Id</li>
+                                        <li><strong>Name:</strong> @previewServer.Name</li>
+                                        <li><strong>Command:</strong> @previewServer.Configuration.GetValueOrDefault("command", "N/A")</li>
+                                        <li><strong>Args:</strong> @previewServer.Configuration.GetValueOrDefault("args", "N/A")</li>
+                                    </ul>
+                                </div>
+                            }
+
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-primary" @onclick="ParseConfiguration" disabled="@isProcessing">
+                                    @if (isProcessing)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2"></span>
+                                    }
+                                    🔍 Parse & Preview
+                                </button>
+                                <button class="btn btn-success" @onclick="AddFromConfig" 
+                                        disabled="@(previewServer == null || isProcessing)">
+                                    ✅ Add Server
+                                </button>
+                                <button class="btn btn-outline-secondary" @onclick="ResetForm">
+                                    🔄 Reset
+                                </button>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="tab-pane-content">
+                            <h5>Manual Server Configuration</h5>
+                            <p class="text-muted">
+                                Fill out the form below to manually configure a custom MCP server.
+                            </p>
+
+                            <div class="mb-3">
+                                <label for="manualId" class="form-label">
+                                    Server ID: <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="manualId" @bind="manualId" 
+                                       placeholder="e.g., my-custom-server" required />
+                                <small class="text-muted">Unique identifier for this server</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="manualName" class="form-label">
+                                    Display Name: <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="manualName" @bind="manualName" 
+                                       placeholder="e.g., My Custom Server" required />
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="manualDescription" class="form-label">Description:</label>
+                                <textarea class="form-control" id="manualDescription" rows="2" 
+                                          @bind="manualDescription" 
+                                          placeholder="Brief description of what this server does"></textarea>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="manualVersion" class="form-label">Version:</label>
+                                    <input type="text" class="form-control" id="manualVersion" 
+                                           @bind="manualVersion" placeholder="1.0.0" />
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="manualAuthor" class="form-label">Author:</label>
+                                    <input type="text" class="form-control" id="manualAuthor" 
+                                           @bind="manualAuthor" placeholder="Your name or organization" />
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="manualCommand" class="form-label">
+                                    Command: <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="manualCommand" 
+                                       @bind="manualCommand" placeholder="e.g., node, npx, python" required />
+                                <small class="text-muted">The executable to run</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="manualArgs" class="form-label">
+                                    Arguments: <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="manualArgs" 
+                                       @bind="manualArgs" placeholder="e.g., /path/to/server.js or --option value" required />
+                                <small class="text-muted">Space-separated arguments</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Environment Variables (optional):</label>
+                                @foreach (var kvp in manualEnvVars.Select((v, i) => (v, i)))
+                                {
+                                    <div class="input-group mb-2">
+                                        <input type="text" class="form-control" placeholder="KEY" 
+                                               @bind="kvp.v.Key" />
+                                        <input type="text" class="form-control" placeholder="value" 
+                                               @bind="kvp.v.Value" />
+                                        <button class="btn btn-outline-danger" type="button" 
+                                                @onclick="() => RemoveEnvVar(kvp.i)">
+                                            🗑️
+                                        </button>
+                                    </div>
+                                }
+                                <button class="btn btn-outline-secondary btn-sm" @onclick="AddEnvVar">
+                                    ➕ Add Environment Variable
+                                </button>
+                            </div>
+
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-success" @onclick="AddFromManual" disabled="@isProcessing">
+                                    @if (isProcessing)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2"></span>
+                                    }
+                                    ✅ Add Server
+                                </button>
+                                <button class="btn btn-outline-secondary" @onclick="ResetForm">
+                                    🔄 Reset
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="mt-3 text-center">
+                <a href="/servers/installed" class="btn btn-link">← Back to Installed Servers</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    // Tab state
+    private string activeTab = "paste";
+    
+    // Paste configuration state
+    private string configText = string.Empty;
+    private string? serverId = null;
+    private McpServer? previewServer = null;
+    
+    // Manual entry state
+    private string manualId = string.Empty;
+    private string manualName = string.Empty;
+    private string manualDescription = string.Empty;
+    private string manualVersion = "1.0.0";
+    private string manualAuthor = "Custom";
+    private string manualCommand = string.Empty;
+    private string manualArgs = string.Empty;
+    private List<EnvVar> manualEnvVars = new();
+    
+    // UI state
+    private bool isProcessing = false;
+    private string? successMessage = null;
+    private string? errorMessage = null;
+
+    private class EnvVar
+    {
+        public string Key { get; set; } = string.Empty;
+        public string Value { get; set; } = string.Empty;
+    }
+
+    private void ParseConfiguration()
+    {
+        errorMessage = null;
+        previewServer = null;
+
+        var (success, server, error) = ConfigurationParser.ParseConfiguration(configText, serverId);
+        
+        if (success && server != null)
+        {
+            previewServer = server;
+        }
+        else
+        {
+            errorMessage = error;
+        }
+    }
+
+    private async Task AddFromConfig()
+    {
+        if (previewServer == null)
+        {
+            errorMessage = "Please parse and preview the configuration first";
+            return;
+        }
+
+        isProcessing = true;
+        errorMessage = null;
+        successMessage = null;
+
+        try
+        {
+            var result = await ServerManager.InstallServerAsync(previewServer);
+            
+            if (result)
+            {
+                successMessage = $"Server '{previewServer.Name}' added successfully!";
+                ResetForm();
+                StateHasChanged();
+                
+                // Navigate to installed servers after a brief delay
+                await Task.Delay(2000);
+                Navigation.NavigateTo("/servers/installed");
+            }
+            else
+            {
+                errorMessage = "Failed to add server. It may already exist.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error adding server: {ex.Message}";
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private async Task AddFromManual()
+    {
+        errorMessage = null;
+        successMessage = null;
+
+        // Validation
+        if (string.IsNullOrWhiteSpace(manualId))
+        {
+            errorMessage = "Server ID is required";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(manualName))
+        {
+            errorMessage = "Display name is required";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(manualCommand))
+        {
+            errorMessage = "Command is required";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(manualArgs))
+        {
+            errorMessage = "Arguments are required";
+            return;
+        }
+
+        isProcessing = true;
+
+        try
+        {
+            var envVars = manualEnvVars
+                .Where(e => !string.IsNullOrWhiteSpace(e.Key))
+                .ToDictionary(e => e.Key, e => e.Value);
+
+            var server = ConfigurationParser.CreateServerFromManualInput(
+                manualId,
+                manualName,
+                manualDescription,
+                manualCommand,
+                manualArgs,
+                envVars,
+                manualVersion,
+                manualAuthor
+            );
+
+            var result = await ServerManager.InstallServerAsync(server);
+            
+            if (result)
+            {
+                successMessage = $"Server '{server.Name}' added successfully!";
+                ResetForm();
+                StateHasChanged();
+                
+                // Navigate to installed servers after a brief delay
+                await Task.Delay(2000);
+                Navigation.NavigateTo("/servers/installed");
+            }
+            else
+            {
+                errorMessage = "Failed to add server. It may already exist.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error adding server: {ex.Message}";
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private void AddEnvVar()
+    {
+        manualEnvVars.Add(new EnvVar());
+    }
+
+    private void RemoveEnvVar(int index)
+    {
+        if (index >= 0 && index < manualEnvVars.Count)
+        {
+            manualEnvVars.RemoveAt(index);
+        }
+    }
+
+    private void ResetForm()
+    {
+        // Reset paste configuration
+        configText = string.Empty;
+        serverId = null;
+        previewServer = null;
+        
+        // Reset manual entry
+        manualId = string.Empty;
+        manualName = string.Empty;
+        manualDescription = string.Empty;
+        manualVersion = "1.0.0";
+        manualAuthor = "Custom";
+        manualCommand = string.Empty;
+        manualArgs = string.Empty;
+        manualEnvVars.Clear();
+        
+        // Clear messages
+        errorMessage = null;
+        successMessage = null;
+    }
+}
