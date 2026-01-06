@@ -36,7 +36,8 @@ McpManager/
 │   ├── McpManager.Core/           # Domain models and interfaces
 │   ├── McpManager.Application/    # Business logic and services
 │   ├── McpManager.Infrastructure/ # Agent connectors and registries
-│   └── McpManager.Web/            # Blazor Server web application
+│   ├── McpManager.Web/            # Blazor Server web application
+│   └── McpManager.Desktop/        # Desktop app using Photino.Blazor
 ├── tests/
 │   └── McpManager.Tests/          # Unit and integration tests
 └── docs/                          # Documentation
@@ -58,22 +59,41 @@ McpManager/
 
 ### Installation Options
 
-#### Option 1: Download Pre-built Release
+#### Option 1: Desktop App (Recommended)
+
+The desktop app runs as a standalone application with no browser required!
 
 **Windows:**
-1. Download the latest `mcpmanager-win-x64.zip` from [Releases](https://github.com/JerrettDavis/McpManager/releases)
+1. Download the latest `mcpmanager-desktop-win-x64.zip` from [Releases](https://github.com/JerrettDavis/McpManager/releases)
+2. Extract the archive
+3. Run `McpManager.Desktop.exe`
+4. The app opens in its own window!
+
+**Linux:**
+1. Download the latest `mcpmanager-desktop-linux-x64.tar.gz` from [Releases](https://github.com/JerrettDavis/McpManager/releases)
+2. Extract: `tar -xzf mcpmanager-desktop-linux-x64.tar.gz`
+3. Make executable: `chmod +x McpManager.Desktop`
+4. Run: `./McpManager.Desktop`
+5. The app opens in its own window!
+
+#### Option 2: Server-Hosted
+
+If you prefer the traditional server model where you open a browser:
+
+**Windows:**
+1. Download the latest `mcpmanager-server-win-x64.zip` from [Releases](https://github.com/JerrettDavis/McpManager/releases)
 2. Extract the archive
 3. Run `McpManager.Web.exe`
 4. Navigate to http://localhost:5000
 
 **Linux:**
-1. Download the latest `mcpmanager-linux-x64.tar.gz` from [Releases](https://github.com/JerrettDavis/McpManager/releases)
-2. Extract: `tar -xzf mcpmanager-linux-x64.tar.gz`
+1. Download the latest `mcpmanager-server-linux-x64.tar.gz` from [Releases](https://github.com/JerrettDavis/McpManager/releases)
+2. Extract: `tar -xzf mcpmanager-server-linux-x64.tar.gz`
 3. Make executable: `chmod +x McpManager.Web`
 4. Run: `./McpManager.Web`
 5. Navigate to http://localhost:5000
 
-#### Option 2: Docker
+#### Option 3: Docker
 
 ```bash
 # Pull and run the latest image
@@ -83,7 +103,7 @@ docker run -p 8080:8080 ghcr.io/jerrettdavis/mcpmanager:latest
 # Navigate to http://localhost:8080
 ```
 
-#### Option 3: Build from Source
+#### Option 4: Build from Source
 
 ```bash
 # Clone the repository
