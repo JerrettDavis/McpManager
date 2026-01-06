@@ -1,0 +1,36 @@
+# Configuration for PR Labeler
+# See: https://github.com/actions/labeler
+
+# Core projects
+'area: core':
+  - 'src/McpManager.Core/**/*'
+
+'area: application':
+  - 'src/McpManager.Application/**/*'
+
+'area: infrastructure':
+  - 'src/McpManager.Infrastructure/**/*'
+
+'area: web':
+  - 'src/McpManager.Web/**/*'
+
+# Documentation
+'documentation':
+  - 'docs/**/*'
+  - '*.md'
+  - 'README.md'
+
+# Tests
+'tests':
+  - 'tests/**/*'
+
+# CI/CD
+'ci/cd':
+  - '.github/**/*'
+  - 'Dockerfile'
+  - 'docker-compose.yml'
+
+# Dependencies
+'dependencies':
+  - '**/packages.lock.json'
+  - '**/*.csproj'

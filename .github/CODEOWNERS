@@ -1,0 +1,15 @@
+# CODEOWNERS file
+# Each line represents a rule, where the last matching rule wins
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for everything in the repo
+* @JerrettDavis
+
+# Workflow and CI/CD
+/.github/ @JerrettDavis
+/Dockerfile @JerrettDavis
+/docker-compose.yml @JerrettDavis
+
+# Documentation
+/docs/ @JerrettDavis
+*.md @JerrettDavis
