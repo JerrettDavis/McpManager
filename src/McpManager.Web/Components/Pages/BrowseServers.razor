@@ -1,7 +1,7 @@
 @page "/servers/browse"
 @using McpManager.Core.Interfaces
 @using McpManager.Core.Models
-@inject IServerRegistry ServerRegistry
+@inject IEnumerable<IServerRegistry> ServerRegistries
 @inject IServerManager ServerManager
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
@@ -17,7 +17,7 @@
     </div>
 
     <div class="row mb-4">
-        <div class="col-md-8">
+        <div class="col-md-6">
             <div class="input-group input-group-lg">
                 <input type="text" class="form-control" placeholder="Search servers..." 
                        @bind="searchQuery" @bind:event="oninput" @onkeyup="HandleSearch" />
@@ -26,7 +26,16 @@
                 </button>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
+            <select class="form-select form-select-lg" @bind="selectedRegistry">
+                <option value="">All Registries</option>
+                @foreach (var registry in ServerRegistries)
+                {
+                    <option value="@registry.Name">@registry.Name</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-3">
             <button class="btn btn-outline-secondary btn-lg w-100" @onclick="LoadAllServersAsync">
                 Show All Servers
             </button>
@@ -42,16 +51,29 @@
             <p class="mt-2">Loading servers...</p>
         </div>
     }
+    else if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger">
+            <h4 class="alert-heading">Error Loading Servers</h4>
+            <p>@errorMessage</p>
+            <button class="btn btn-outline-danger" @onclick="LoadAllServersAsync">
+                🔄 Retry
+            </button>
+        </div>
+    }
     else if (!searchResults.Any())
     {
         <div class="alert alert-info">
             <strong>No servers found.</strong> Try a different search term or click "Show All Servers".
+            <div class="mt-2">
+                <small class="text-muted">Registries available: @ServerRegistries.Count()</small>
+            </div>
         </div>
     }
     else
     {
         <div class="row">
-            @foreach (var result in searchResults)
+            @foreach (var result in GetPagedResults())
             {
                 <div class="col-md-6 col-lg-4 mb-4">
                     <div class="card h-100">
@@ -65,9 +87,12 @@
                                     <span class="badge bg-secondary me-1">@tag</span>
                                 }
                             </div>
-                            <small class="text-muted">
+                            <small class="text-muted d-block mb-1">
                                 <strong>@result.DownloadCount</strong> downloads · 
                                 Updated @FormatDate(result.LastUpdated)
+                            </small>
+                            <small class="text-muted">
+                                <span class="badge bg-light text-dark">@result.RegistryName</span>
                             </small>
                         </div>
                         <div class="card-footer bg-transparent">
@@ -88,26 +113,161 @@
                 </div>
             }
         </div>
+
+        <!-- Pagination Controls -->
+        @if (TotalPages > 1)
+        {
+            <nav aria-label="Server pagination">
+                <ul class="pagination justify-content-center">
+                    <!-- Previous Button -->
+                    <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                        <button class="page-link" @onclick="() => GoToPage(currentPage - 1)" disabled="@(currentPage == 1)">
+                            Previous
+                        </button>
+                    </li>
+
+                    <!-- Page Numbers -->
+                    @foreach (var pageNum in GetPageNumbers())
+                    {
+                        @if (pageNum == -1)
+                        {
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="page-item @(pageNum == currentPage ? "active" : "")">
+                                <button class="page-link" @onclick="() => GoToPage(pageNum)">
+                                    @pageNum
+                                </button>
+                            </li>
+                        }
+                    }
+
+                    <!-- Next Button -->
+                    <li class="page-item @(currentPage == TotalPages ? "disabled" : "")">
+                        <button class="page-link" @onclick="() => GoToPage(currentPage + 1)" disabled="@(currentPage == TotalPages)">
+                            Next
+                        </button>
+                    </li>
+                </ul>
+            </nav>
+
+            <div class="text-center text-muted mb-4">
+                Showing @((currentPage - 1) * pageSize + 1) - @Math.Min(currentPage * pageSize, searchResults.Count) of @searchResults.Count servers
+            </div>
+        }
     }
 </div>
 
 @code {
     private string searchQuery = string.Empty;
+    private string selectedRegistry = string.Empty;
     private List<ServerSearchResult> searchResults = new();
     private bool isLoading = true;
+    private string? errorMessage = null;
+    
+    // Pagination
+    private int currentPage = 1;
+    private const int pageSize = 12; // 12 servers per page (3 columns x 4 rows)
+    private int TotalPages => (int)Math.Ceiling((double)searchResults.Count / pageSize);
 
     protected override async Task OnInitializedAsync()
     {
         await LoadAllServersAsync();
     }
 
+    private IEnumerable<ServerSearchResult> GetPagedResults()
+    {
+        return searchResults
+            .Skip((currentPage - 1) * pageSize)
+            .Take(pageSize);
+    }
+
+    private IEnumerable<int> GetPageNumbers()
+    {
+        var pages = new List<int>();
+        var startPage = Math.Max(1, currentPage - 2);
+        var endPage = Math.Min(TotalPages, currentPage + 2);
+
+        // Always show first page
+        if (startPage > 1)
+        {
+            pages.Add(1);
+            if (startPage > 2)
+            {
+                pages.Add(-1); // Represents ellipsis
+            }
+        }
+
+        // Show pages around current page
+        for (int i = startPage; i <= endPage; i++)
+        {
+            pages.Add(i);
+        }
+
+        // Always show last page
+        if (endPage < TotalPages)
+        {
+            if (endPage < TotalPages - 1)
+            {
+                pages.Add(-1); // Represents ellipsis
+            }
+            pages.Add(TotalPages);
+        }
+
+        return pages;
+    }
+
+    private void GoToPage(int page)
+    {
+        if (page < 1 || page > TotalPages) return;
+        currentPage = page;
+        StateHasChanged();
+    }
+
     private async Task LoadAllServersAsync()
     {
         isLoading = true;
-        var results = await ServerRegistry.GetAllServersAsync();
-        searchResults = results.ToList();
-        await CheckInstalledStatusAsync();
-        isLoading = false;
+        errorMessage = null;
+        currentPage = 1; // Reset to first page
+        var allResults = new List<ServerSearchResult>();
+
+        try
+        {
+            var registries = string.IsNullOrEmpty(selectedRegistry) 
+                ? ServerRegistries 
+                : ServerRegistries.Where(r => r.Name == selectedRegistry);
+
+            foreach (var registry in registries)
+            {
+                try
+                {
+                    var results = await registry.GetAllServersAsync();
+                    allResults.AddRange(results);
+                }
+                catch (Exception ex)
+                {
+                    errorMessage = $"Error loading from {registry.Name}: {ex.Message}";
+                }
+            }
+
+            searchResults = allResults
+                .GroupBy(r => r.Server.Id)
+                .Select(g => g.First())
+                .ToList();
+
+            await CheckInstalledStatusAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Unexpected error: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 
     private async Task PerformSearchAsync()
@@ -119,10 +279,45 @@
         }
 
         isLoading = true;
-        var results = await ServerRegistry.SearchAsync(searchQuery);
-        searchResults = results.ToList();
-        await CheckInstalledStatusAsync();
-        isLoading = false;
+        errorMessage = null;
+        currentPage = 1; // Reset to first page
+        var allResults = new List<ServerSearchResult>();
+
+        try
+        {
+            var registries = string.IsNullOrEmpty(selectedRegistry) 
+                ? ServerRegistries 
+                : ServerRegistries.Where(r => r.Name == selectedRegistry);
+
+            foreach (var registry in registries)
+            {
+                try
+                {
+                    var results = await registry.SearchAsync(searchQuery);
+                    allResults.AddRange(results);
+                }
+                catch (Exception ex)
+                {
+                    errorMessage = $"Error searching {registry.Name}: {ex.Message}";
+                }
+            }
+
+            searchResults = allResults
+                .GroupBy(r => r.Server.Id)
+                .Select(g => g.OrderByDescending(x => x.Score).First())
+                .OrderByDescending(r => r.Score)
+                .ToList();
+
+            await CheckInstalledStatusAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Unexpected error: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 
     private async Task HandleSearch(KeyboardEventArgs e)

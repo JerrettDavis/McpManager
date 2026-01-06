@@ -44,5 +44,6 @@ public enum AgentType
     Claude,
     GitHubCopilot,
     OpenAICodex,
+    ClaudeCode,
     Other
 }

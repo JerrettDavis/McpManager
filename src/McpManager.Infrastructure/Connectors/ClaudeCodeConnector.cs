@@ -10,7 +10,7 @@ namespace McpManager.Infrastructure.Connectors;
 /// </summary>
 public class ClaudeCodeConnector : IAgentConnector
 {
-    public AgentType AgentType => AgentType.Other;
+    public AgentType AgentType => AgentType.ClaudeCode;
 
     public Task<bool> IsAgentInstalledAsync()
     {
