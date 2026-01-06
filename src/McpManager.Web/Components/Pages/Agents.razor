@@ -1,0 +1,124 @@
+@page "/agents"
+@using McpManager.Core.Interfaces
+@using McpManager.Core.Models
+@inject IAgentManager AgentManager
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Manage Agents</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h1>🤖 AI Agent Management</h1>
+            <p class="lead">View and manage your AI agents and their MCP server configurations</p>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Detecting agents...</p>
+        </div>
+    }
+    else if (!detectedAgents.Any())
+    {
+        <div class="alert alert-warning">
+            <h4 class="alert-heading">No AI Agents Detected</h4>
+            <p>We couldn't detect any supported AI agents on your system. Please install one of the following:</p>
+            <ul>
+                <li><strong>Claude Desktop</strong> - Available at <a href="https://claude.ai/download" target="_blank">claude.ai/download</a></li>
+                <li><strong>GitHub Copilot</strong> - Install via VS Code extensions</li>
+            </ul>
+            <hr />
+            <button class="btn btn-primary" @onclick="RefreshAgentsAsync">
+                🔄 Refresh Detection
+            </button>
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var agent in detectedAgents)
+            {
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header @GetAgentHeaderClass(agent.Type)">
+                            <h5 class="mb-0 text-white">@agent.Name</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <span class="badge bg-success">✓ Detected</span>
+                            </div>
+
+                            <div class="mb-3">
+                                <strong>Configuration Path:</strong>
+                                <div class="text-muted small font-monospace text-break">
+                                    @agent.ConfigPath
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <strong>Configured Servers:</strong>
+                                @if (!agent.ConfiguredServerIds.Any())
+                                {
+                                    <p class="text-muted mb-0">No servers configured</p>
+                                }
+                                else
+                                {
+                                    <div class="d-flex flex-wrap gap-1 mt-2">
+                                        @foreach (var serverId in agent.ConfiguredServerIds)
+                                        {
+                                            <span class="badge bg-info">@serverId</span>
+                                        }
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="alert alert-info small mb-0">
+                                <strong>@agent.ConfiguredServerIds.Count</strong> server(s) configured
+                            </div>
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            <a href="/agents/@agent.Id" class="btn btn-primary w-100">
+                                ⚙️ Manage Servers for @agent.Name
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<Agent> detectedAgents = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshAgentsAsync();
+    }
+
+    private async Task RefreshAgentsAsync()
+    {
+        isLoading = true;
+        var agents = await AgentManager.DetectInstalledAgentsAsync();
+        detectedAgents = agents.ToList();
+        isLoading = false;
+    }
+
+    private static string GetAgentHeaderClass(AgentType type)
+    {
+        return type switch
+        {
+            AgentType.Claude => "bg-primary",
+            AgentType.GitHubCopilot => "bg-success",
+            AgentType.OpenAICodex => "bg-info",
+            _ => "bg-secondary"
+        };
+    }
+}

@@ -1,0 +1,36 @@
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">🚀 MCP Manager</a>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="nav flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Dashboard
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="servers/browse">
+                <span class="bi bi-search-nav-menu" aria-hidden="true"></span> Browse Servers
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="servers/installed">
+                <span class="bi bi-box-seam-nav-menu" aria-hidden="true"></span> Installed Servers
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="agents">
+                <span class="bi bi-robot-nav-menu" aria-hidden="true"></span> Agents
+            </NavLink>
+        </div>
+    </nav>
+</div>
+

@@ -1,0 +1,167 @@
+@page "/servers/browse"
+@using McpManager.Core.Interfaces
+@using McpManager.Core.Models
+@inject IServerRegistry ServerRegistry
+@inject IServerManager ServerManager
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Browse MCP Servers</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h1>🔍 Browse MCP Servers</h1>
+            <p class="lead">Discover and install MCP servers from the registry</p>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="input-group input-group-lg">
+                <input type="text" class="form-control" placeholder="Search servers..." 
+                       @bind="searchQuery" @bind:event="oninput" @onkeyup="HandleSearch" />
+                <button class="btn btn-primary" @onclick="PerformSearchAsync">
+                    <span class="oi oi-magnifying-glass"></span> Search
+                </button>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <button class="btn btn-outline-secondary btn-lg w-100" @onclick="LoadAllServersAsync">
+                Show All Servers
+            </button>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading servers...</p>
+        </div>
+    }
+    else if (!searchResults.Any())
+    {
+        <div class="alert alert-info">
+            <strong>No servers found.</strong> Try a different search term or click "Show All Servers".
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var result in searchResults)
+            {
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">@result.Server.Name</h5>
+                            <h6 class="card-subtitle mb-2 text-muted">v@result.Server.Version</h6>
+                            <p class="card-text">@result.Server.Description</p>
+                            <div class="mb-2">
+                                @foreach (var tag in result.Server.Tags.Take(3))
+                                {
+                                    <span class="badge bg-secondary me-1">@tag</span>
+                                }
+                            </div>
+                            <small class="text-muted">
+                                <strong>@result.DownloadCount</strong> downloads · 
+                                Updated @FormatDate(result.LastUpdated)
+                            </small>
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            @if (result.Server.IsInstalled)
+                            {
+                                <button class="btn btn-success btn-sm w-100" disabled>
+                                    ✓ Installed
+                                </button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-primary btn-sm w-100" @onclick="() => InstallServerAsync(result.Server)">
+                                    📥 Install
+                                </button>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private string searchQuery = string.Empty;
+    private List<ServerSearchResult> searchResults = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAllServersAsync();
+    }
+
+    private async Task LoadAllServersAsync()
+    {
+        isLoading = true;
+        var results = await ServerRegistry.GetAllServersAsync();
+        searchResults = results.ToList();
+        await CheckInstalledStatusAsync();
+        isLoading = false;
+    }
+
+    private async Task PerformSearchAsync()
+    {
+        if (string.IsNullOrWhiteSpace(searchQuery))
+        {
+            await LoadAllServersAsync();
+            return;
+        }
+
+        isLoading = true;
+        var results = await ServerRegistry.SearchAsync(searchQuery);
+        searchResults = results.ToList();
+        await CheckInstalledStatusAsync();
+        isLoading = false;
+    }
+
+    private async Task HandleSearch(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await PerformSearchAsync();
+        }
+    }
+
+    private async Task CheckInstalledStatusAsync()
+    {
+        var installedServers = await ServerManager.GetInstalledServersAsync();
+        var installedIds = installedServers.Select(s => s.Id).ToHashSet();
+
+        foreach (var result in searchResults)
+        {
+            result.Server.IsInstalled = installedIds.Contains(result.Server.Id);
+        }
+    }
+
+    private async Task InstallServerAsync(McpServer server)
+    {
+        await ServerManager.InstallServerAsync(server);
+        server.IsInstalled = true;
+        StateHasChanged();
+    }
+
+    private static string FormatDate(DateTime? date)
+    {
+        if (!date.HasValue) return "unknown";
+        var days = (DateTime.UtcNow - date.Value).Days;
+        return days switch
+        {
+            0 => "today",
+            1 => "yesterday",
+            < 30 => $"{days} days ago",
+            < 365 => $"{days / 30} months ago",
+            _ => $"{days / 365} years ago"
+        };
+    }
+}

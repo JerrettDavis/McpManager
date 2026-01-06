@@ -1,0 +1,119 @@
+@page "/"
+@using McpManager.Core.Interfaces
+@using McpManager.Core.Models
+@inject IServerManager ServerManager
+@inject IAgentManager AgentManager
+@inject IInstallationManager InstallationManager
+@rendermode InteractiveServer
+
+<PageTitle>MCP Manager - Dashboard</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="display-4">🚀 MCP Manager Dashboard</h1>
+            <p class="lead">Manage your Model Context Protocol servers across all AI agents</p>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Installed Servers</h5>
+                    <p class="display-6">@installedServers.Count()</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Detected Agents</h5>
+                    <p class="display-6">@detectedAgents.Count()</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Active Installations</h5>
+                    <p class="display-6">@activeInstallations.Count()</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Detected AI Agents</h5>
+                </div>
+                <div class="card-body">
+                    @if (!detectedAgents.Any())
+                    {
+                        <div class="alert alert-warning">
+                            <strong>No agents detected.</strong> Install Claude Desktop or GitHub Copilot to get started.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="list-group">
+                            @foreach (var agent in detectedAgents)
+                            {
+                                <div class="list-group-item">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-1">@agent.Name</h6>
+                                            <small class="text-muted">@agent.ConfiguredServerIds.Count server(s) configured</small>
+                                        </div>
+                                        <a href="/agents/@agent.Id" class="btn btn-sm btn-primary">Manage</a>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="/servers/browse" class="btn btn-primary btn-lg">
+                            🔍 Browse MCP Servers
+                        </a>
+                        <a href="/servers/installed" class="btn btn-secondary btn-lg">
+                            📦 View Installed Servers
+                        </a>
+                        <a href="/agents" class="btn btn-info btn-lg">
+                            🤖 Manage Agents
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private IEnumerable<McpServer> installedServers = Enumerable.Empty<McpServer>();
+    private IEnumerable<Agent> detectedAgents = Enumerable.Empty<Agent>();
+    private IEnumerable<ServerInstallation> activeInstallations = Enumerable.Empty<ServerInstallation>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        installedServers = await ServerManager.GetInstalledServersAsync();
+        detectedAgents = await AgentManager.DetectInstalledAgentsAsync();
+        activeInstallations = await InstallationManager.GetAllInstallationsAsync();
+    }
+}
