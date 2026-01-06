@@ -2,16 +2,17 @@
 
 ## Overview
 
-MCP Manager uses a modern, comprehensive design system inspired by shadcn/ui and modern design principles. The system supports automatic light/dark themes based on system preferences and provides a consistent, professional look across the application.
+MCP Manager uses a modern, comprehensive design system with a soft vaporwave-inspired pastel aesthetic. The color palette features soothing purples, teals, pinks, and blues reminiscent of Material Design's pastel tones. The system supports automatic light/dark themes based on system preferences and provides a consistent, calming visual experience across the application.
 
 ## Design Principles
 
-1. **Modern & Clean**: Sleek, minimalist design with ample spacing
+1. **Modern & Clean**: Sleek, minimalist design with ample spacing and soft colors
 2. **Consistent**: Unified design language across all components
 3. **Accessible**: Focus states, color contrast, and semantic HTML
 4. **Responsive**: Mobile-first approach with breakpoints
-5. **Theme-Aware**: Automatic light/dark mode support
+5. **Theme-Aware**: Automatic light/dark mode support with vaporwave aesthetics
 6. **Performance**: CSS custom properties for fast theme switching
+7. **Soothing**: Pastel colors that are easy on the eyes and reduce visual fatigue
 
 ## Color System
 
@@ -20,29 +21,31 @@ MCP Manager uses a modern, comprehensive design system inspired by shadcn/ui and
 The color system uses CSS custom properties (CSS variables) for easy theming and consistency.
 
 #### Brand Colors
-- `--primary-color: #6366f1` - Primary brand color (Indigo)
-- `--primary-dark: #4f46e5` - Darker primary shade
-- `--primary-light: #818cf8` - Lighter primary shade
-- `--secondary-color: #10b981` - Success/secondary color (Green)
-- `--danger-color: #ef4444` - Danger/error color (Red)
-- `--warning-color: #f59e0b` - Warning color (Amber)
-- `--info-color: #3b82f6` - Info color (Blue)
+- `--primary-color: #9c88ff` - Primary brand color (Soft Purple)
+- `--primary-dark: #7b68ee` - Darker primary shade
+- `--primary-light: #b8a9ff` - Lighter primary shade
+- `--secondary-color: #4dd0e1` - Success/secondary color (Pastel Teal)
+- `--danger-color: #ff6b9d` - Danger/error color (Soft Pink)
+- `--warning-color: #ffb74d` - Warning color (Soft Amber)
+- `--info-color: #64b5f6` - Info color (Light Blue)
 
 #### Light Theme
-- `--bg-primary: #ffffff` - Primary background
-- `--bg-secondary: #f8fafc` - Secondary background
-- `--bg-tertiary: #f1f5f9` - Tertiary background
+- `--bg-primary: #fafbff` - Primary background (Very light purple tint)
+- `--bg-secondary: #f5f7ff` - Secondary background (Soft purple tint)
+- `--bg-tertiary: #eef1ff` - Tertiary background (Light purple tint)
 - `--bg-elevated: #ffffff` - Elevated surfaces (cards)
-- `--text-primary: #0f172a` - Primary text
-- `--text-secondary: #475569` - Secondary text
-- `--text-tertiary: #64748b` - Tertiary/muted text
-- `--border-color: #e2e8f0` - Border color
+- `--text-primary: #1a1a2e` - Primary text
+- `--text-secondary: #4a5568` - Secondary text
+- `--text-tertiary: #718096` - Tertiary/muted text
+- `--border-color: #e8eaf6` - Border color (Soft lavender)
 
 #### Dark Theme
 Automatically applied via `@media (prefers-color-scheme: dark)`
-- `--bg-primary: #0f172a` - Dark primary background
-- `--bg-secondary: #1e293b` - Dark secondary background
-- `--text-primary: #f1f5f9` - Light text on dark
+- `--bg-primary: #1a1a2e` - Dark primary background (Deep purple-blue)
+- `--bg-secondary: #16213e` - Dark secondary background (Navy-purple)
+- `--bg-tertiary: #0f3460` - Tertiary background (Deep teal-blue)
+- `--text-primary: #e8eaf6` - Light text on dark (Soft lavender)
+- `--text-secondary: #b8b8d4` - Secondary text (Muted lavender)
 - And more...
 
 ## Typography

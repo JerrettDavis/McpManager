@@ -2,32 +2,32 @@
 :root {
     color-scheme: light dark;
     
-    /* Light theme colors */
-    --primary-color: #6366f1;
-    --primary-dark: #4f46e5;
-    --primary-light: #818cf8;
-    --secondary-color: #10b981;
-    --secondary-dark: #059669;
-    --danger-color: #ef4444;
-    --danger-dark: #dc2626;
-    --warning-color: #f59e0b;
-    --info-color: #3b82f6;
+    /* Light theme colors - Vaporwave Pastel Palette */
+    --primary-color: #9c88ff;
+    --primary-dark: #7b68ee;
+    --primary-light: #b8a9ff;
+    --secondary-color: #4dd0e1;
+    --secondary-dark: #26c6da;
+    --danger-color: #ff6b9d;
+    --danger-dark: #ff5a8a;
+    --warning-color: #ffb74d;
+    --info-color: #64b5f6;
     
-    /* Light theme backgrounds */
-    --bg-primary: #ffffff;
-    --bg-secondary: #f8fafc;
-    --bg-tertiary: #f1f5f9;
+    /* Light theme backgrounds - Soft pastels */
+    --bg-primary: #fafbff;
+    --bg-secondary: #f5f7ff;
+    --bg-tertiary: #eef1ff;
     --bg-elevated: #ffffff;
     
-    /* Light theme text */
-    --text-primary: #0f172a;
-    --text-secondary: #475569;
-    --text-tertiary: #64748b;
+    /* Light theme text - Adjusted for pastels */
+    --text-primary: #1a1a2e;
+    --text-secondary: #4a5568;
+    --text-tertiary: #718096;
     --text-inverse: #ffffff;
     
-    /* Light theme borders */
-    --border-color: #e2e8f0;
-    --border-color-hover: #cbd5e1;
+    /* Light theme borders - Softer */
+    --border-color: #e8eaf6;
+    --border-color-hover: #c5cae9;
     
     /* Shadows */
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
@@ -45,21 +45,21 @@
 /* Dark theme */
 @media (prefers-color-scheme: dark) {
     :root {
-        /* Dark theme backgrounds */
-        --bg-primary: #0f172a;
-        --bg-secondary: #1e293b;
-        --bg-tertiary: #334155;
-        --bg-elevated: #1e293b;
+        /* Dark theme backgrounds - Purple-tinted vaporwave */
+        --bg-primary: #1a1a2e;
+        --bg-secondary: #16213e;
+        --bg-tertiary: #0f3460;
+        --bg-elevated: #16213e;
         
-        /* Dark theme text */
-        --text-primary: #f1f5f9;
-        --text-secondary: #cbd5e1;
-        --text-tertiary: #94a3b8;
-        --text-inverse: #0f172a;
+        /* Dark theme text - Softer for vaporwave */
+        --text-primary: #e8eaf6;
+        --text-secondary: #b8b8d4;
+        --text-tertiary: #9090b8;
+        --text-inverse: #1a1a2e;
         
-        /* Dark theme borders */
-        --border-color: #334155;
-        --border-color-hover: #475569;
+        /* Dark theme borders - Purple-tinted */
+        --border-color: #2a2d5a;
+        --border-color-hover: #3d4175;
         
         /* Adjust shadows for dark mode */
         --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
