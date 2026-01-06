@@ -29,10 +29,20 @@ jobs:
         include:
           - os: ubuntu-latest
             runtime: linux-x64
-            artifact_name: mcpmanager-linux-x64
+            artifact_name: mcpmanager-server-linux-x64
+            project: src/McpManager.Web/McpManager.Web.csproj
           - os: windows-latest
             runtime: win-x64
-            artifact_name: mcpmanager-win-x64
+            artifact_name: mcpmanager-server-win-x64
+            project: src/McpManager.Web/McpManager.Web.csproj
+          - os: ubuntu-latest
+            runtime: linux-x64
+            artifact_name: mcpmanager-desktop-linux-x64
+            project: src/McpManager.Desktop/McpManager.Desktop.csproj
+          - os: windows-latest
+            runtime: win-x64
+            artifact_name: mcpmanager-desktop-win-x64
+            project: src/McpManager.Desktop/McpManager.Desktop.csproj
     
     steps:
     - uses: actions/checkout@v4
@@ -49,7 +59,7 @@ jobs:
     
     - name: Build and Publish Self-Contained
       run: |
-        dotnet publish src/McpManager.Web/McpManager.Web.csproj `
+        dotnet publish ${{ matrix.project }} `
           --configuration Release `
           --runtime ${{ matrix.runtime }} `
           --self-contained true `
@@ -170,19 +180,35 @@ jobs:
         
         ### Deployment Options
         
-        #### Docker
+        #### Docker (Server-Hosted)
         \`\`\`bash
         docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
         docker run -p 8080:8080 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
         \`\`\`
         
-        #### Windows Executable
-        1. Download \`mcpmanager-win-x64.zip\`
+        #### Desktop App (Windows)
+        1. Download \`mcpmanager-desktop-win-x64.zip\`
+        2. Extract the archive
+        3. Run \`McpManager.Desktop.exe\`
+        4. The app opens in its own window - no browser needed!
+        
+        #### Desktop App (Linux)
+        1. Download \`mcpmanager-desktop-linux-x64.tar.gz\`
+        2. Extract: \`tar -xzf mcpmanager-desktop-linux-x64.tar.gz\`
+        3. Run: \`./McpManager.Desktop\`
+        4. The app opens in its own window - no browser needed!
+        
+        #### Server-Hosted (Windows)
+        1. Download \`mcpmanager-server-win-x64.zip\`
         2. Extract the archive
         3. Run \`McpManager.Web.exe\`
         4. Navigate to http://localhost:5000
         
-        #### Linux Executable
+        #### Server-Hosted (Linux)
+        1. Download \`mcpmanager-server-linux-x64.tar.gz\`
+        2. Extract: \`tar -xzf mcpmanager-server-linux-x64.tar.gz\`
+        3. Run: \`./McpManager.Web\`
+        4. Navigate to http://localhost:5000
         1. Download \`mcpmanager-linux-x64.tar.gz\`
         2. Extract: \`tar -xzf mcpmanager-linux-x64.tar.gz\`
         3. Run: \`./McpManager.Web\`
