@@ -22,6 +22,7 @@ builder.Services.AddSingleton<IServerManager, ServerManager>();
 builder.Services.AddSingleton<IAgentManager, AgentManager>();
 builder.Services.AddSingleton<IInstallationManager, InstallationManager>();
 builder.Services.AddSingleton<IServerMonitor, ServerMonitor>();
+builder.Services.AddSingleton<IConfigurationService, ConfigurationService>();
 builder.Services.AddSingleton<ConfigurationParser>();
 
 // Register agent connectors
