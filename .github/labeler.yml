@@ -3,34 +3,42 @@
 
 # Core projects
 'area: core':
-  - 'src/McpManager.Core/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'src/McpManager.Core/**/*'
 
 'area: application':
-  - 'src/McpManager.Application/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'src/McpManager.Application/**/*'
 
 'area: infrastructure':
-  - 'src/McpManager.Infrastructure/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'src/McpManager.Infrastructure/**/*'
 
 'area: web':
-  - 'src/McpManager.Web/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'src/McpManager.Web/**/*'
 
 # Documentation
 'documentation':
-  - 'docs/**/*'
-  - '*.md'
-  - 'README.md'
+  - changed-files:
+    - any-glob-to-any-file: 'docs/**/*'
+    - any-glob-to-any-file: '*.md'
+    - any-glob-to-any-file: 'README.md'
 
 # Tests
 'tests':
-  - 'tests/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'tests/**/*'
 
 # CI/CD
 'ci/cd':
-  - '.github/**/*'
-  - 'Dockerfile'
-  - 'docker-compose.yml'
+  - changed-files:
+    - any-glob-to-any-file: '.github/**/*'
+    - any-glob-to-any-file: 'Dockerfile'
+    - any-glob-to-any-file: 'docker-compose.yml'
 
 # Dependencies
 'dependencies':
-  - '**/packages.lock.json'
-  - '**/*.csproj'
+  - changed-files:
+    - any-glob-to-any-file: '**/packages.lock.json'
+    - any-glob-to-any-file: '**/*.csproj'
