@@ -171,7 +171,7 @@
         else if (activeTab == "json" && tab == "form")
         {
             // Switching from JSON to form - parse the JSON
-            OnJsonBlur();
+            SyncJsonToForm();
         }
 
         activeTab = tab;
@@ -209,7 +209,7 @@
         NotifyConfigurationChanged();
     }
 
-    private void OnJsonBlur()
+    private void SyncJsonToForm()
     {
         if (ReadOnly) return;
 
@@ -239,6 +239,11 @@
 
         // Notify parent
         NotifyConfigurationChanged();
+    }
+
+    private void OnJsonBlur()
+    {
+        SyncJsonToForm();
     }
 
     private void NotifyConfigurationChanged()

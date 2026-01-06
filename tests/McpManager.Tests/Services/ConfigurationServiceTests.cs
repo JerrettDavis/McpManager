@@ -21,7 +21,9 @@ public class ConfigurationServiceTests
     public void AreConfigurationsEqual_BothNull_ReturnsTrue()
     {
         // Act
-        var result = _configurationService.AreConfigurationsEqual(null!, null!);
+#pragma warning disable CS8625 // Testing null handling
+        var result = _configurationService.AreConfigurationsEqual(null, null);
+#pragma warning restore CS8625
 
         // Assert
         Assert.True(result);
@@ -34,8 +36,10 @@ public class ConfigurationServiceTests
         var config = new Dictionary<string, string> { ["key"] = "value" };
 
         // Act
-        var result1 = _configurationService.AreConfigurationsEqual(config, null!);
-        var result2 = _configurationService.AreConfigurationsEqual(null!, config);
+#pragma warning disable CS8625 // Testing null handling
+        var result1 = _configurationService.AreConfigurationsEqual(config, null);
+        var result2 = _configurationService.AreConfigurationsEqual(null, config);
+#pragma warning restore CS8625
 
         // Assert
         Assert.False(result1);
@@ -336,7 +340,9 @@ public class ConfigurationServiceTests
     public void ValidateConfiguration_NullConfig_ReturnsInvalid()
     {
         // Act
-        var result = _configurationService.ValidateConfiguration(null!);
+#pragma warning disable CS8625 // Testing null handling
+        var result = _configurationService.ValidateConfiguration(null);
+#pragma warning restore CS8625
 
         // Assert
         Assert.False(result.IsValid);
@@ -361,7 +367,9 @@ public class ConfigurationServiceTests
     public void ValidateConfiguration_NullValue_ReturnsInvalid()
     {
         // Arrange
-        var config = new Dictionary<string, string> { ["key"] = null! };
+#pragma warning disable CS8625 // Testing null handling
+        var config = new Dictionary<string, string> { ["key"] = null };
+#pragma warning restore CS8625
 
         // Act
         var result = _configurationService.ValidateConfiguration(config);
