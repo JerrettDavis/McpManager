@@ -1,0 +1,44 @@
+# Configuration for PR Labeler
+# See: https://github.com/actions/labeler
+
+# Core projects
+'area: core':
+  - changed-files:
+    - any-glob-to-any-file: 'src/McpManager.Core/**/*'
+
+'area: application':
+  - changed-files:
+    - any-glob-to-any-file: 'src/McpManager.Application/**/*'
+
+'area: infrastructure':
+  - changed-files:
+    - any-glob-to-any-file: 'src/McpManager.Infrastructure/**/*'
+
+'area: web':
+  - changed-files:
+    - any-glob-to-any-file: 'src/McpManager.Web/**/*'
+
+# Documentation
+'documentation':
+  - changed-files:
+    - any-glob-to-any-file: 'docs/**/*'
+    - any-glob-to-any-file: '*.md'
+    - any-glob-to-any-file: 'README.md'
+
+# Tests
+'tests':
+  - changed-files:
+    - any-glob-to-any-file: 'tests/**/*'
+
+# CI/CD
+'ci/cd':
+  - changed-files:
+    - any-glob-to-any-file: '.github/**/*'
+    - any-glob-to-any-file: 'Dockerfile'
+    - any-glob-to-any-file: 'docker-compose.yml'
+
+# Dependencies
+'dependencies':
+  - changed-files:
+    - any-glob-to-any-file: '**/packages.lock.json'
+    - any-glob-to-any-file: '**/*.csproj'

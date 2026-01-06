@@ -1,0 +1,207 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v0.1.0)'
+        required: true
+        default: 'v0.1.0'
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+permissions:
+  contents: read
+
+jobs:
+  build-artifacts:
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            runtime: linux-x64
+            artifact_name: mcpmanager-linux-x64
+          - os: windows-latest
+            runtime: win-x64
+            artifact_name: mcpmanager-win-x64
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+    
+    - name: Restore dependencies
+      run: dotnet restore
+    
+    - name: Build and Publish Self-Contained
+      run: |
+        dotnet publish src/McpManager.Web/McpManager.Web.csproj `
+          --configuration Release `
+          --runtime ${{ matrix.runtime }} `
+          --self-contained true `
+          --output ./publish/${{ matrix.runtime }} `
+          /p:PublishSingleFile=true `
+          /p:PublishTrimmed=false `
+          /p:IncludeNativeLibrariesForSelfExtract=true
+      shell: pwsh
+    
+    - name: Create Archive (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        cd ./publish/${{ matrix.runtime }}
+        tar -czf ../../${{ matrix.artifact_name }}.tar.gz .
+    
+    - name: Create Archive (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        cd ./publish/${{ matrix.runtime }}
+        Compress-Archive -Path * -DestinationPath ../../${{ matrix.artifact_name }}.zip
+      shell: pwsh
+    
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.artifact_name }}
+        path: |
+          ${{ matrix.artifact_name }}.tar.gz
+          ${{ matrix.artifact_name }}.zip
+        if-no-files-found: ignore
+
+  build-docker:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Extract version
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          VERSION="${{ github.event.inputs.version }}"
+        else
+          VERSION="${GITHUB_REF#refs/tags/}"
+        fi
+        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+        echo "version_tag=${VERSION#v}" >> $GITHUB_OUTPUT
+    
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=semver,pattern={{version}},value=${{ steps.version.outputs.version }}
+          type=semver,pattern={{major}}.{{minor}},value=${{ steps.version.outputs.version }}
+          type=semver,pattern={{major}},value=${{ steps.version.outputs.version }}
+          type=raw,value=latest,enable={{is_default_branch}}
+    
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        platforms: linux/amd64,linux/arm64
+
+  create-release:
+    needs: [build-artifacts, build-docker]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: ./artifacts
+    
+    - name: Extract version
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          VERSION="${{ github.event.inputs.version }}"
+        else
+          VERSION="${GITHUB_REF#refs/tags/}"
+        fi
+        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+    
+    - name: Generate Release Notes
+      id: notes
+      run: |
+        cat << EOF > release_notes.md
+        ## MCP Manager ${{ steps.version.outputs.version }}
+        
+        ### Deployment Options
+        
+        #### Docker
+        \`\`\`bash
+        docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
+        docker run -p 8080:8080 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
+        \`\`\`
+        
+        #### Windows Executable
+        1. Download \`mcpmanager-win-x64.zip\`
+        2. Extract the archive
+        3. Run \`McpManager.Web.exe\`
+        4. Navigate to http://localhost:5000
+        
+        #### Linux Executable
+        1. Download \`mcpmanager-linux-x64.tar.gz\`
+        2. Extract: \`tar -xzf mcpmanager-linux-x64.tar.gz\`
+        3. Run: \`./McpManager.Web\`
+        4. Navigate to http://localhost:5000
+        
+        ### Changes
+        
+        See commit history for detailed changes.
+        EOF
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.version.outputs.version }}
+        name: Release ${{ steps.version.outputs.version }}
+        body_path: release_notes.md
+        draft: false
+        prerelease: false
+        files: |
+          ./artifacts/**/*.tar.gz
+          ./artifacts/**/*.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

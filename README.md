@@ -1,8 +1,13 @@
 # MCP Manager
 
+[![CI](https://github.com/JerrettDavis/McpManager/actions/workflows/ci.yml/badge.svg)](https://github.com/JerrettDavis/McpManager/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/JerrettDavis/McpManager/actions/workflows/codeql.yml/badge.svg)](https://github.com/JerrettDavis/McpManager/actions/workflows/codeql.yml)
+[![codecov](https://codecov.io/gh/JerrettDavis/McpManager/branch/main/graph/badge.svg)](https://codecov.io/gh/JerrettDavis/McpManager)
 ![.NET 10.0](https://img.shields.io/badge/.NET-10.0-512BD4?style=flat&logo=dotnet)
 ![Blazor](https://img.shields.io/badge/Blazor-512BD4?style=flat&logo=blazor)
-![License](https://img.shields.io/badge/license-MIT-green)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/JerrettDavis/McpManager)](https://github.com/JerrettDavis/McpManager/releases)
+[![Docker](https://img.shields.io/badge/docker-ghcr.io-blue?logo=docker)](https://github.com/JerrettDavis/McpManager/pkgs/container/mcpmanager)
 
 > **Manage your Model Context Protocol servers across all AI agents in one place!**
 
@@ -48,10 +53,37 @@ McpManager/
 
 ### Prerequisites
 
-- [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+- [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) (for building from source)
 - One or more AI agents installed (Claude Desktop, GitHub Copilot, etc.)
 
-### Run Locally
+### Installation Options
+
+#### Option 1: Download Pre-built Release
+
+**Windows:**
+1. Download the latest `mcpmanager-win-x64.zip` from [Releases](https://github.com/JerrettDavis/McpManager/releases)
+2. Extract the archive
+3. Run `McpManager.Web.exe`
+4. Navigate to http://localhost:5000
+
+**Linux:**
+1. Download the latest `mcpmanager-linux-x64.tar.gz` from [Releases](https://github.com/JerrettDavis/McpManager/releases)
+2. Extract: `tar -xzf mcpmanager-linux-x64.tar.gz`
+3. Make executable: `chmod +x McpManager.Web`
+4. Run: `./McpManager.Web`
+5. Navigate to http://localhost:5000
+
+#### Option 2: Docker
+
+```bash
+# Pull and run the latest image
+docker pull ghcr.io/jerrettdavis/mcpmanager:latest
+docker run -p 8080:8080 ghcr.io/jerrettdavis/mcpmanager:latest
+
+# Navigate to http://localhost:8080
+```
+
+#### Option 3: Build from Source
 
 ```bash
 # Clone the repository
@@ -70,13 +102,17 @@ dotnet run --project src/McpManager.Web
 ### Run with Docker
 
 ```bash
-# Build the image
-docker build -t mcp-manager .
+# Clone the repository
+git clone https://github.com/JerrettDavis/McpManager.git
+cd McpManager
 
-# Run the container
-docker run -p 8080:8080 mcp-manager
+# Restore dependencies
+dotnet restore
 
-# Navigate to http://localhost:8080
+# Run the application
+dotnet run --project src/McpManager.Web
+
+# Navigate to https://localhost:5001
 ```
 
 ## 📖 Usage
