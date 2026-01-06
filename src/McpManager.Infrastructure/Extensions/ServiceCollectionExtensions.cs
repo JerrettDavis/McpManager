@@ -31,7 +31,11 @@ public static class ServiceCollectionExtensions
             "mcpmanager.db");
 
         // Ensure directory exists
-        Directory.CreateDirectory(Path.GetDirectoryName(databasePath)!);
+        var directory = Path.GetDirectoryName(databasePath);
+        if (!string.IsNullOrEmpty(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
 
         services.AddDbContext<McpManagerDbContext>(options =>
             options.UseSqlite($"Data Source={databasePath}"));

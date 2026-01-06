@@ -163,9 +163,13 @@ public class DesktopAppBuildTests : IDisposable
             {
                 Directory.Delete(_testOutputDir, true);
             }
-            catch
+            catch (IOException)
             {
-                // Ignore cleanup errors
+                // Ignore if directory is in use
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // Ignore if we don't have permissions
             }
         }
     }
