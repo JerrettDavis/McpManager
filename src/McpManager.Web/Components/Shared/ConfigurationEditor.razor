@@ -1,0 +1,275 @@
+@using McpManager.Core.Interfaces
+@inject IConfigurationService ConfigurationService
+
+<div class="configuration-editor">
+    <ul class="nav nav-tabs mb-3" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link @(activeTab == "form" ? "active" : "")" 
+                    type="button" 
+                    @onclick="@(() => SwitchTab("form"))">
+                Form Editor
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link @(activeTab == "json" ? "active" : "")" 
+                    type="button" 
+                    @onclick="@(() => SwitchTab("json"))">
+                JSON Editor
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+        @if (activeTab == "form")
+        {
+            <div class="tab-pane fade show active">
+                @if (!configItems.Any())
+                {
+                    <div class="alert alert-info">
+                        <p class="mb-2">No configuration items yet.</p>
+                        <button class="btn btn-sm btn-primary" @onclick="AddConfigItem">
+                            ➕ Add Configuration Item
+                        </button>
+                    </div>
+                }
+                else
+                {
+                    <div class="mb-3">
+                        <button class="btn btn-sm btn-primary mb-2" @onclick="AddConfigItem">
+                            ➕ Add Configuration Item
+                        </button>
+                    </div>
+                    @foreach (var item in configItems)
+                    {
+                        <div class="card mb-2">
+                            <div class="card-body py-2">
+                                <div class="row g-2">
+                                    <div class="col-md-4">
+                                        <input type="text" 
+                                               class="form-control form-control-sm" 
+                                               placeholder="Key" 
+                                               value="@item.Key"
+                                               @onchange="(e) => UpdateConfigItemKey(item, e.Value?.ToString() ?? string.Empty)" />
+                                    </div>
+                                    <div class="col-md-7">
+                                        <input type="text" 
+                                               class="form-control form-control-sm" 
+                                               placeholder="Value" 
+                                               value="@item.Value"
+                                               @onchange="(e) => UpdateConfigItemValue(item, e.Value?.ToString() ?? string.Empty)" />
+                                    </div>
+                                    <div class="col-md-1">
+                                        <button class="btn btn-sm btn-outline-danger w-100" 
+                                                @onclick="() => RemoveConfigItem(item)">
+                                            🗑️
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+
+                @if (!string.IsNullOrEmpty(validationError))
+                {
+                    <div class="alert alert-danger mt-2">
+                        @validationError
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="tab-pane fade show active">
+                <textarea class="form-control font-monospace" 
+                          rows="15" 
+                          @bind="jsonText"
+                          @bind:event="oninput"
+                          @onblur="OnJsonBlur"></textarea>
+
+                @if (!string.IsNullOrEmpty(jsonError))
+                {
+                    <div class="alert alert-danger mt-2">
+                        <strong>JSON Error:</strong> @jsonError
+                    </div>
+                }
+                
+                @if (!string.IsNullOrEmpty(validationError))
+                {
+                    <div class="alert alert-danger mt-2">
+                        <strong>Validation Error:</strong> @validationError
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    @if (ReadOnly)
+    {
+        <div class="alert alert-info mt-2 mb-0">
+            <small>⚠️ This configuration is read-only</small>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public Dictionary<string, string> Configuration { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<Dictionary<string, string>> ConfigurationChanged { get; set; }
+
+    [Parameter]
+    public bool ReadOnly { get; set; } = false;
+
+    private string activeTab = "form";
+    private List<ConfigItem> configItems = new();
+    private string jsonText = "{}";
+    private string jsonError = string.Empty;
+    private string validationError = string.Empty;
+
+    private class ConfigItem
+    {
+        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string Key { get; set; } = string.Empty;
+        public string Value { get; set; } = string.Empty;
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Initialize config items from the Configuration parameter
+        SyncFromConfiguration();
+    }
+
+    private void SyncFromConfiguration()
+    {
+        configItems = Configuration
+            .Select(kvp => new ConfigItem { Key = kvp.Key, Value = kvp.Value })
+            .ToList();
+
+        jsonText = ConfigurationService.SerializeConfiguration(Configuration);
+        jsonError = string.Empty;
+        validationError = string.Empty;
+    }
+
+    private void SwitchTab(string tab)
+    {
+        if (ReadOnly)
+        {
+            activeTab = tab;
+            return;
+        }
+
+        // When switching tabs, sync the data
+        if (activeTab == "form" && tab == "json")
+        {
+            // Switching from form to JSON - serialize the form data
+            var config = configItems.ToDictionary(i => i.Key, i => i.Value);
+            jsonText = ConfigurationService.SerializeConfiguration(config);
+            jsonError = string.Empty;
+        }
+        else if (activeTab == "json" && tab == "form")
+        {
+            // Switching from JSON to form - parse the JSON
+            SyncJsonToForm();
+        }
+
+        activeTab = tab;
+    }
+
+    private void AddConfigItem()
+    {
+        if (ReadOnly) return;
+
+        configItems.Add(new ConfigItem());
+        NotifyConfigurationChanged();
+    }
+
+    private void UpdateConfigItemKey(ConfigItem item, string newKey)
+    {
+        if (ReadOnly) return;
+
+        item.Key = newKey;
+        NotifyConfigurationChanged();
+    }
+
+    private void UpdateConfigItemValue(ConfigItem item, string newValue)
+    {
+        if (ReadOnly) return;
+
+        item.Value = newValue;
+        NotifyConfigurationChanged();
+    }
+
+    private void RemoveConfigItem(ConfigItem item)
+    {
+        if (ReadOnly) return;
+
+        configItems.Remove(item);
+        NotifyConfigurationChanged();
+    }
+
+    private void SyncJsonToForm()
+    {
+        if (ReadOnly) return;
+
+        var config = ConfigurationService.DeserializeConfiguration(jsonText);
+        if (config == null)
+        {
+            jsonError = "Invalid JSON format";
+            return;
+        }
+
+        jsonError = string.Empty;
+
+        // Validate the configuration
+        var validationResult = ConfigurationService.ValidateConfiguration(config);
+        if (!validationResult.IsValid)
+        {
+            validationError = string.Join(", ", validationResult.Errors);
+            return;
+        }
+
+        validationError = string.Empty;
+
+        // Update the form items
+        configItems = config
+            .Select(kvp => new ConfigItem { Key = kvp.Key, Value = kvp.Value })
+            .ToList();
+
+        // Notify parent
+        NotifyConfigurationChanged();
+    }
+
+    private void OnJsonBlur()
+    {
+        SyncJsonToForm();
+    }
+
+    private void NotifyConfigurationChanged()
+    {
+        if (ReadOnly) return;
+
+        var config = configItems
+            .Where(i => !string.IsNullOrWhiteSpace(i.Key))
+            .ToDictionary(i => i.Key, i => i.Value ?? string.Empty);
+
+        // Validate
+        var validationResult = ConfigurationService.ValidateConfiguration(config);
+        if (!validationResult.IsValid)
+        {
+            validationError = string.Join(", ", validationResult.Errors);
+            return;
+        }
+
+        validationError = string.Empty;
+
+        // Update JSON text if we're on the form tab
+        if (activeTab == "form")
+        {
+            jsonText = ConfigurationService.SerializeConfiguration(config);
+        }
+
+        ConfigurationChanged.InvokeAsync(config);
+    }
+}

@@ -74,9 +74,14 @@
                             }
                         </div>
                         <div class="card-footer bg-transparent">
-                            <button class="btn btn-outline-danger btn-sm w-100" @onclick="() => UninstallServerAsync(server.Id)">
-                                🗑️ Uninstall
-                            </button>
+                            <div class="d-grid gap-2">
+                                <a href="/servers/@server.Id" class="btn btn-outline-primary btn-sm">
+                                    ⚙️ Configure
+                                </a>
+                                <button class="btn btn-outline-danger btn-sm" @onclick="() => UninstallServerAsync(server.Id)">
+                                    🗑️ Uninstall
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
