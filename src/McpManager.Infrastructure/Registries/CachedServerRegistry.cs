@@ -44,9 +44,18 @@ public class CachedServerRegistry(
         
         if (resultsList.Any())
         {
-            // Cache the results for future use
-            await cacheRepository.UpsertManyAsync(Name, resultsList);
-            await cacheRepository.UpdateRegistryMetadataAsync(Name, resultsList.Count, true);
+            // Try to cache the results for future use
+            // If database doesn't exist, silently fail (cache will be populated by background worker)
+            try
+            {
+                await cacheRepository.UpsertManyAsync(Name, resultsList);
+                await cacheRepository.UpdateRegistryMetadataAsync(Name, resultsList.Count, true);
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException)
+            {
+                // Database doesn't exist yet - skip caching
+                // Background worker will populate cache when database is initialized
+            }
         }
         
         return resultsList;
@@ -77,9 +86,18 @@ public class CachedServerRegistry(
         
         if (resultsList.Any())
         {
-            // Cache the results for future use
-            await cacheRepository.UpsertManyAsync(Name, resultsList);
-            await cacheRepository.UpdateRegistryMetadataAsync(Name, resultsList.Count, true);
+            // Try to cache the results for future use
+            // If database doesn't exist, silently fail (cache will be populated by background worker)
+            try
+            {
+                await cacheRepository.UpsertManyAsync(Name, resultsList);
+                await cacheRepository.UpdateRegistryMetadataAsync(Name, resultsList.Count, true);
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException)
+            {
+                // Database doesn't exist yet - skip caching
+                // Background worker will populate cache when database is initialized
+            }
         }
         
         return resultsList;
