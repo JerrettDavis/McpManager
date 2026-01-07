@@ -149,9 +149,14 @@ public class ModelContextProtocolRegistry(HttpClient httpClient) : IServerRegist
             }
         }
 
+        // Create unique ID using name@version to handle multiple versions of same server
+        var uniqueId = !string.IsNullOrEmpty(dto.Name) && !string.IsNullOrEmpty(dto.Version)
+            ? $"{dto.Name}@{dto.Version}"
+            : dto.Name ?? Guid.NewGuid().ToString();
+
         return new McpServer
         {
-            Id = dto.Name ?? Guid.NewGuid().ToString(),
+            Id = uniqueId,
             Name = dto.Title ?? dto.Name ?? "Unknown Server",
             Description = dto.Description ?? string.Empty,
             Version = dto.Version ?? "1.0.0",

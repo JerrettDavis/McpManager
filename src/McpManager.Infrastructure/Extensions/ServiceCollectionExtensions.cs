@@ -23,12 +23,13 @@ public static class ServiceCollectionExtensions
     /// <returns>The service collection for chaining</returns>
     public static IServiceCollection AddMcpManagerServices(
         this IServiceCollection services, 
+        string appName = "McpManager",
         string? dbPath = null)
     {
         // Configure database
         var databasePath = dbPath ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "McpManager",
+            appName,
             "mcpmanager.db");
 
         // Ensure directory exists

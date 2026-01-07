@@ -230,7 +230,7 @@ public class RegistryIntegrationTests
                     var servers = await registry.GetAllServersAsync();
                     return (Registry: registry.Name, Success: true, Count: servers.Count());
                 }
-                catch (Exception ex)
+                catch
                 {
                     return (Registry: registry.Name, Success: false, Count: 0);
                 }

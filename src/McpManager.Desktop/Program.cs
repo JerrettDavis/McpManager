@@ -16,7 +16,7 @@ class Program
         appBuilder.Services.AddLogging();
 
         // Add McpManager services
-        appBuilder.Services.AddMcpManagerServices();
+        appBuilder.Services.AddMcpManagerServices("McpManagerDesktop");
 
         appBuilder.RootComponents.Add<App>("#app");
         appBuilder.RootComponents.Add<HeadOutlet>("head::after");

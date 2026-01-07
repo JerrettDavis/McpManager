@@ -27,6 +27,14 @@ public class RegistryEndToEndTests(ITestOutputHelper output)
 
         var serviceProvider = services.BuildServiceProvider();
 
+        // Ensure clean database for each test
+        using (var scope = serviceProvider.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<Infrastructure.Persistence.McpManagerDbContext>();
+            await dbContext.Database.EnsureDeletedAsync();
+            await dbContext.Database.EnsureCreatedAsync();
+        }
+
         output.WriteLine("=== STEP 1: Verify Registries Are Registered ===");
         var registries = serviceProvider.GetServices<IServerRegistry>().ToList();
         output.WriteLine($"Found {registries.Count} registries:");
@@ -144,6 +152,14 @@ public class RegistryEndToEndTests(ITestOutputHelper output)
 
         var serviceProvider = services.BuildServiceProvider();
 
+        // Ensure clean database for each test
+        using (var scope = serviceProvider.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<Infrastructure.Persistence.McpManagerDbContext>();
+            await dbContext.Database.EnsureDeletedAsync();
+            await dbContext.Database.EnsureCreatedAsync();
+        }
+
         output.WriteLine("=== Testing RegistryRefreshWorker Logic ===");
 
         // Get dependencies
@@ -206,6 +222,14 @@ public class RegistryEndToEndTests(ITestOutputHelper output)
         var services = new ServiceCollection();
         services.AddMcpManagerServices();
         var serviceProvider = services.BuildServiceProvider();
+
+        // Ensure clean database for each test
+        using (var scope = serviceProvider.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<Infrastructure.Persistence.McpManagerDbContext>();
+            await dbContext.Database.EnsureDeletedAsync();
+            await dbContext.Database.EnsureCreatedAsync();
+        }
 
         output.WriteLine("=== Simulating BrowseServers.razor OnInitializedAsync ===");
 
@@ -307,6 +331,14 @@ public class RegistryEndToEndTests(ITestOutputHelper output)
         services.AddMcpManagerServices();
         var serviceProvider = services.BuildServiceProvider();
 
+        // Ensure clean database for each test
+        using (var scope = serviceProvider.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<Infrastructure.Persistence.McpManagerDbContext>();
+            await dbContext.Database.EnsureDeletedAsync();
+            await dbContext.Database.EnsureCreatedAsync();
+        }
+
         output.WriteLine("=== Comparing Direct Registry Queries vs Cache ===\n");
 
         var registries = serviceProvider.GetServices<IServerRegistry>().ToList();
@@ -378,6 +410,14 @@ public class RegistryEndToEndTests(ITestOutputHelper output)
         var services = new ServiceCollection();
         services.AddMcpManagerServices();
         var serviceProvider = services.BuildServiceProvider();
+
+        // Ensure clean database for each test
+        using (var scope = serviceProvider.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<Infrastructure.Persistence.McpManagerDbContext>();
+            await dbContext.Database.EnsureDeletedAsync();
+            await dbContext.Database.EnsureCreatedAsync();
+        }
 
         var registries = serviceProvider.GetServices<IServerRegistry>().ToList();
         var cacheRepo = serviceProvider.GetRequiredService<IRegistryCacheRepository>();

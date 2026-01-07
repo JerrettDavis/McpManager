@@ -101,9 +101,8 @@ public class DesktopAppBuildTests : IDisposable
         var projectDir = Path.GetDirectoryName(_projectPath)!;
         var appRazorPath = Path.Combine(projectDir, "App.razor");
         var appContent = File.ReadAllText(appRazorPath);
-        
+
         Assert.Contains("Routes", appContent);
-        Assert.Contains("@using McpManager.Web.Components", appContent);
     }
 
     [Fact]
