@@ -57,7 +57,10 @@ public static class ServiceCollectionExtensions
         {
             var factory = sp.GetRequiredService<IHttpClientFactory>();
             var client = factory.CreateClient("ModelContextProtocolRegistry");
-            return new ModelContextProtocolRegistry(client);
+            var innerRegistry = new ModelContextProtocolRegistry(client);
+            
+            // Wrap with caching for better performance - use service provider to get scoped dependencies when needed
+            return new CachedServerRegistry(innerRegistry, sp);
         });
 
         services.AddHttpClient("McpServersComRegistry", client =>
@@ -70,7 +73,10 @@ public static class ServiceCollectionExtensions
         {
             var factory = sp.GetRequiredService<IHttpClientFactory>();
             var client = factory.CreateClient("McpServersComRegistry");
-            return new McpServersComRegistry(client);
+            var innerRegistry = new McpServersComRegistry(client);
+            
+            // Wrap with caching for better performance - use service provider to get scoped dependencies when needed
+            return new CachedServerRegistry(innerRegistry, sp);
         });
 
         services.AddHttpClient("ModelContextProtocolGitHubRegistry", client =>
@@ -82,7 +88,10 @@ public static class ServiceCollectionExtensions
         {
             var factory = sp.GetRequiredService<IHttpClientFactory>();
             var client = factory.CreateClient("ModelContextProtocolGitHubRegistry");
-            return new ModelContextProtocolGitHubRegistry(client);
+            var innerRegistry = new ModelContextProtocolGitHubRegistry(client);
+            
+            // Wrap with caching for better performance - use service provider to get scoped dependencies when needed
+            return new CachedServerRegistry(innerRegistry, sp);
         });
 
         // Register application services
@@ -100,8 +109,12 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IAgentConnector, ClaudeCodeConnector>();
         services.AddSingleton<IAgentConnector, CodexConnector>();
 
-        // Register mock registry for demo/fallback
-        services.AddSingleton<IServerRegistry, MockServerRegistry>();
+        // Register mock registry for demo/fallback, wrapped with caching
+        services.AddSingleton<IServerRegistry>(sp =>
+        {
+            var innerRegistry = new MockServerRegistry();
+            return new CachedServerRegistry(innerRegistry, sp);
+        });
 
         return services;
     }

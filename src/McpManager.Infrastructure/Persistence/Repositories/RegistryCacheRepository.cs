@@ -135,15 +135,23 @@ public class RegistryCacheRepository(McpManagerDbContext context) : IRegistryCac
 
     public async Task<bool> IsCacheStaleAsync(string registryName, TimeSpan maxAge)
     {
-        var metadata = await context.RegistryMetadata.FindAsync(registryName);
-        
-        if (metadata == null)
+        try
         {
-            return true; // No cache exists, it's stale
-        }
+            var metadata = await context.RegistryMetadata.FindAsync(registryName);
+            
+            if (metadata == null)
+            {
+                return true; // No cache exists, it's stale
+            }
 
-        var age = DateTime.UtcNow - metadata.LastRefreshAt;
-        return age > maxAge;
+            var age = DateTime.UtcNow - metadata.LastRefreshAt;
+            return age > maxAge;
+        }
+        catch (Microsoft.Data.Sqlite.SqliteException)
+        {
+            // Database doesn't exist or table not created yet - cache is stale
+            return true;
+        }
     }
 
     private static string GenerateId(string registryName, string serverId)

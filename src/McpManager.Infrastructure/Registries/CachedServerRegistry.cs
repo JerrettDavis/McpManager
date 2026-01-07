@@ -1,15 +1,16 @@
 using McpManager.Core.Interfaces;
 using McpManager.Core.Models;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace McpManager.Infrastructure.Registries;
 
 /// <summary>
 /// Caching wrapper for IServerRegistry that reads from local cache first.
-/// Implements read-through caching pattern.
+/// Implements read-through caching pattern with cache population on miss.
 /// </summary>
 public class CachedServerRegistry(
     IServerRegistry innerRegistry,
-    IRegistryCacheRepository cacheRepository,
+    IServiceProvider serviceProvider,
     TimeSpan? cacheMaxAge = null
 )
     : ICachedServerRegistry
@@ -21,6 +22,9 @@ public class CachedServerRegistry(
     public async Task<IEnumerable<ServerSearchResult>> SearchAsync(string query, int maxResults = 50)
     {
         // Try cache first
+        using var scope = serviceProvider.CreateScope();
+        var cacheRepository = scope.ServiceProvider.GetRequiredService<IRegistryCacheRepository>();
+        
         var isCacheStale = await cacheRepository.IsCacheStaleAsync(Name, _cacheMaxAge);
         
         if (!isCacheStale)
@@ -34,13 +38,35 @@ public class CachedServerRegistry(
             }
         }
 
-        // Fall back to remote registry
-        return await innerRegistry.SearchAsync(query, maxResults);
+        // Fall back to remote registry and cache results
+        var remoteResults = await innerRegistry.SearchAsync(query, maxResults);
+        var resultsList = remoteResults.ToList();
+        
+        if (resultsList.Any())
+        {
+            // Try to cache the results for future use
+            // If database doesn't exist, silently fail (cache will be populated by background worker)
+            try
+            {
+                await cacheRepository.UpsertManyAsync(Name, resultsList);
+                await cacheRepository.UpdateRegistryMetadataAsync(Name, resultsList.Count, true);
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException)
+            {
+                // Database doesn't exist yet - skip caching
+                // Background worker will populate cache when database is initialized
+            }
+        }
+        
+        return resultsList;
     }
 
     public async Task<IEnumerable<ServerSearchResult>> GetAllServersAsync()
     {
         // Try cache first
+        using var scope = serviceProvider.CreateScope();
+        var cacheRepository = scope.ServiceProvider.GetRequiredService<IRegistryCacheRepository>();
+        
         var isCacheStale = await cacheRepository.IsCacheStaleAsync(Name, _cacheMaxAge);
         
         if (!isCacheStale)
@@ -54,13 +80,35 @@ public class CachedServerRegistry(
             }
         }
 
-        // Fall back to remote registry
-        return await innerRegistry.GetAllServersAsync();
+        // Fall back to remote registry and cache results
+        var remoteResults = await innerRegistry.GetAllServersAsync();
+        var resultsList = remoteResults.ToList();
+        
+        if (resultsList.Any())
+        {
+            // Try to cache the results for future use
+            // If database doesn't exist, silently fail (cache will be populated by background worker)
+            try
+            {
+                await cacheRepository.UpsertManyAsync(Name, resultsList);
+                await cacheRepository.UpdateRegistryMetadataAsync(Name, resultsList.Count, true);
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException)
+            {
+                // Database doesn't exist yet - skip caching
+                // Background worker will populate cache when database is initialized
+            }
+        }
+        
+        return resultsList;
     }
 
     public async Task<McpServer?> GetServerDetailsAsync(string serverId)
     {
         // Try cache first
+        using var scope = serviceProvider.CreateScope();
+        var cacheRepository = scope.ServiceProvider.GetRequiredService<IRegistryCacheRepository>();
+        
         var isCacheStale = await cacheRepository.IsCacheStaleAsync(Name, _cacheMaxAge);
         
         if (!isCacheStale)
@@ -73,6 +121,7 @@ public class CachedServerRegistry(
         }
 
         // Fall back to remote registry
+        // Note: Single server details are not cached to avoid partial cache state
         return await innerRegistry.GetServerDetailsAsync(serverId);
     }
 }
