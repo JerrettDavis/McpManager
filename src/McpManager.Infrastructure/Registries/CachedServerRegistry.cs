@@ -6,7 +6,7 @@ namespace McpManager.Infrastructure.Registries;
 
 /// <summary>
 /// Caching wrapper for IServerRegistry that reads from local cache first.
-/// Implements read-through caching pattern.
+/// Implements read-through caching pattern with cache population on miss.
 /// </summary>
 public class CachedServerRegistry(
     IServerRegistry innerRegistry,
@@ -38,8 +38,18 @@ public class CachedServerRegistry(
             }
         }
 
-        // Fall back to remote registry
-        return await innerRegistry.SearchAsync(query, maxResults);
+        // Fall back to remote registry and cache results
+        var remoteResults = await innerRegistry.SearchAsync(query, maxResults);
+        var resultsList = remoteResults.ToList();
+        
+        if (resultsList.Any())
+        {
+            // Cache the results for future use
+            await cacheRepository.UpsertManyAsync(Name, resultsList);
+            await cacheRepository.UpdateRegistryMetadataAsync(Name, resultsList.Count, true);
+        }
+        
+        return resultsList;
     }
 
     public async Task<IEnumerable<ServerSearchResult>> GetAllServersAsync()
@@ -61,8 +71,18 @@ public class CachedServerRegistry(
             }
         }
 
-        // Fall back to remote registry
-        return await innerRegistry.GetAllServersAsync();
+        // Fall back to remote registry and cache results
+        var remoteResults = await innerRegistry.GetAllServersAsync();
+        var resultsList = remoteResults.ToList();
+        
+        if (resultsList.Any())
+        {
+            // Cache the results for future use
+            await cacheRepository.UpsertManyAsync(Name, resultsList);
+            await cacheRepository.UpdateRegistryMetadataAsync(Name, resultsList.Count, true);
+        }
+        
+        return resultsList;
     }
 
     public async Task<McpServer?> GetServerDetailsAsync(string serverId)
@@ -83,6 +103,7 @@ public class CachedServerRegistry(
         }
 
         // Fall back to remote registry
+        // Note: Single server details are not cached to avoid partial cache state
         return await innerRegistry.GetServerDetailsAsync(serverId);
     }
 }
