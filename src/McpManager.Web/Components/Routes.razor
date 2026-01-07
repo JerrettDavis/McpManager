@@ -2,11 +2,7 @@
 
 <Router AppAssembly="typeof(Program).Assembly" NotFoundPage="typeof(Pages.NotFound)">
     <Found Context="routeData">
-        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" DefaultRenderMode="@InteractiveServer" />
+        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
         <FocusOnNavigate RouteData="routeData" Selector="h1" />
     </Found>
 </Router>
-
-@code {
-    private static readonly IComponentRenderMode InteractiveServer = Microsoft.AspNetCore.Components.Web.RenderMode.InteractiveServer;
-}
