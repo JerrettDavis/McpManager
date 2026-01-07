@@ -1,5 +1,6 @@
 using McpManager.Core.Interfaces;
 using McpManager.Core.Models;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace McpManager.Infrastructure.Registries;
 
@@ -9,7 +10,7 @@ namespace McpManager.Infrastructure.Registries;
 /// </summary>
 public class CachedServerRegistry(
     IServerRegistry innerRegistry,
-    IRegistryCacheRepository cacheRepository,
+    IServiceProvider serviceProvider,
     TimeSpan? cacheMaxAge = null
 )
     : ICachedServerRegistry
@@ -21,6 +22,9 @@ public class CachedServerRegistry(
     public async Task<IEnumerable<ServerSearchResult>> SearchAsync(string query, int maxResults = 50)
     {
         // Try cache first
+        using var scope = serviceProvider.CreateScope();
+        var cacheRepository = scope.ServiceProvider.GetRequiredService<IRegistryCacheRepository>();
+        
         var isCacheStale = await cacheRepository.IsCacheStaleAsync(Name, _cacheMaxAge);
         
         if (!isCacheStale)
@@ -41,6 +45,9 @@ public class CachedServerRegistry(
     public async Task<IEnumerable<ServerSearchResult>> GetAllServersAsync()
     {
         // Try cache first
+        using var scope = serviceProvider.CreateScope();
+        var cacheRepository = scope.ServiceProvider.GetRequiredService<IRegistryCacheRepository>();
+        
         var isCacheStale = await cacheRepository.IsCacheStaleAsync(Name, _cacheMaxAge);
         
         if (!isCacheStale)
@@ -61,6 +68,9 @@ public class CachedServerRegistry(
     public async Task<McpServer?> GetServerDetailsAsync(string serverId)
     {
         // Try cache first
+        using var scope = serviceProvider.CreateScope();
+        var cacheRepository = scope.ServiceProvider.GetRequiredService<IRegistryCacheRepository>();
+        
         var isCacheStale = await cacheRepository.IsCacheStaleAsync(Name, _cacheMaxAge);
         
         if (!isCacheStale)

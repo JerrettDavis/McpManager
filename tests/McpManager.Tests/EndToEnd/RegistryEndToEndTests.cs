@@ -441,7 +441,7 @@ public class RegistryEndToEndTests(ITestOutputHelper output)
         // Create a cached wrapper
         var cachedRegistry = new Infrastructure.Registries.CachedServerRegistry(
             baseRegistry,
-            cacheRepo,
+            serviceProvider,
             TimeSpan.FromHours(1));
 
         output.WriteLine($"\nQuerying through CachedServerRegistry...");
