@@ -10,26 +10,17 @@ namespace McpManager.Infrastructure.Persistence.Repositories;
 /// <summary>
 /// Repository implementation for persisting installed MCP servers using EF Core.
 /// </summary>
-public class ServerRepository : IServerRepository
+public class ServerRepository(McpManagerDbContext context, ILogger<ServerRepository> logger) : IServerRepository
 {
-    private readonly McpManagerDbContext _context;
-    private readonly ILogger<ServerRepository> _logger;
-
-    public ServerRepository(McpManagerDbContext context, ILogger<ServerRepository> logger)
-    {
-        _context = context;
-        _logger = logger;
-    }
-
     public async Task<IEnumerable<McpServer>> GetAllAsync()
     {
-        var entities = await _context.InstalledServers.ToListAsync();
+        var entities = await context.InstalledServers.ToListAsync();
         return entities.Select(MapToModel);
     }
 
     public async Task<McpServer?> GetByIdAsync(string serverId)
     {
-        var entity = await _context.InstalledServers.FindAsync(serverId);
+        var entity = await context.InstalledServers.FindAsync(serverId);
         return entity == null ? null : MapToModel(entity);
     }
 
@@ -41,14 +32,14 @@ public class ServerRepository : IServerRepository
         }
 
         var entity = MapToEntity(server);
-        _context.InstalledServers.Add(entity);
-        await _context.SaveChangesAsync();
+        context.InstalledServers.Add(entity);
+        await context.SaveChangesAsync();
         return true;
     }
 
     public async Task<bool> UpdateAsync(McpServer server)
     {
-        var entity = await _context.InstalledServers.FindAsync(server.Id);
+        var entity = await context.InstalledServers.FindAsync(server.Id);
         if (entity == null)
         {
             return false;
@@ -64,26 +55,26 @@ public class ServerRepository : IServerRepository
         entity.ConfigurationJson = JsonSerializer.Serialize(server.Configuration);
         entity.UpdatedAt = DateTime.UtcNow;
 
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
         return true;
     }
 
     public async Task<bool> DeleteAsync(string serverId)
     {
-        var entity = await _context.InstalledServers.FindAsync(serverId);
+        var entity = await context.InstalledServers.FindAsync(serverId);
         if (entity == null)
         {
             return false;
         }
 
-        _context.InstalledServers.Remove(entity);
-        await _context.SaveChangesAsync();
+        context.InstalledServers.Remove(entity);
+        await context.SaveChangesAsync();
         return true;
     }
 
     public async Task<bool> ExistsAsync(string serverId)
     {
-        return await _context.InstalledServers.AnyAsync(s => s.Id == serverId);
+        return await context.InstalledServers.AnyAsync(s => s.Id == serverId);
     }
 
     private McpServer MapToModel(InstalledServerEntity entity)
@@ -93,12 +84,12 @@ public class ServerRepository : IServerRepository
 
         try
         {
-            tags = JsonSerializer.Deserialize<List<string>>(entity.TagsJson) ?? new List<string>();
+            tags = JsonSerializer.Deserialize<List<string>>(entity.TagsJson) ?? [];
         }
         catch (JsonException ex)
         {
-            _logger.LogWarning(ex, "Failed to deserialize tags for server {ServerId}. Using empty list.", entity.Id);
-            tags = new List<string>();
+            logger.LogWarning(ex, "Failed to deserialize tags for server {ServerId}. Using empty list.", entity.Id);
+            tags = [];
         }
 
         try
@@ -108,7 +99,7 @@ public class ServerRepository : IServerRepository
         }
         catch (JsonException ex)
         {
-            _logger.LogWarning(ex, "Failed to deserialize configuration for server {ServerId}. Using empty dictionary.", entity.Id);
+            logger.LogWarning(ex, "Failed to deserialize configuration for server {ServerId}. Using empty dictionary.", entity.Id);
             configuration = new Dictionary<string, string>();
         }
 

@@ -36,7 +36,7 @@ public class ClaudeCodeConnector : IAgentConnector
         var settingsPath = GetClaudeSettingsPath();
         if (!File.Exists(settingsPath))
         {
-            return Enumerable.Empty<string>();
+            return [];
         }
 
         try
@@ -49,7 +49,7 @@ public class ClaudeCodeConnector : IAgentConnector
         }
         catch
         {
-            return Enumerable.Empty<string>();
+            return [];
         }
     }
 
@@ -171,7 +171,7 @@ public class ClaudeCodeConnector : IAgentConnector
     private class ServerConfig
     {
         public string Command { get; set; } = string.Empty;
-        public List<string> Args { get; set; } = new();
+        public List<string> Args { get; set; } = [];
         public Dictionary<string, string>? Env { get; set; }
         public bool? Disabled { get; set; }
     }

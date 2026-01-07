@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using McpManager.Core.Models;
 using McpManager.Infrastructure.Persistence;
 using McpManager.Infrastructure.Persistence.Repositories;
-using Xunit;
 
 namespace McpManager.Tests.Persistence;
 
@@ -88,7 +87,7 @@ public class RegistryCacheRepositoryTests : IDisposable
             Server = new McpServer { Id = "server1", Name = "Old Name" },
             RegistryName = "TestRegistry"
         };
-        await _repository.UpsertManyAsync("TestRegistry", new[] { initialResult });
+        await _repository.UpsertManyAsync("TestRegistry", [initialResult]);
 
         var updatedResult = new ServerSearchResult
         {
@@ -97,7 +96,7 @@ public class RegistryCacheRepositoryTests : IDisposable
         };
 
         // Act
-        await _repository.UpsertManyAsync("TestRegistry", new[] { updatedResult });
+        await _repository.UpsertManyAsync("TestRegistry", [updatedResult]);
 
         // Assert
         var cached = await _repository.GetByIdAsync("TestRegistry", "server1");
@@ -239,14 +238,12 @@ public class RegistryCacheRepositoryTests : IDisposable
     public async Task GetAllAsync_ReturnsServersFromMultipleRegistries()
     {
         // Arrange
-        await _repository.UpsertManyAsync("Registry1", new[]
-        {
+        await _repository.UpsertManyAsync("Registry1", [
             new ServerSearchResult { Server = new McpServer { Id = "s1", Name = "Server 1" }, RegistryName = "Registry1" }
-        });
-        await _repository.UpsertManyAsync("Registry2", new[]
-        {
+        ]);
+        await _repository.UpsertManyAsync("Registry2", [
             new ServerSearchResult { Server = new McpServer { Id = "s2", Name = "Server 2" }, RegistryName = "Registry2" }
-        });
+        ]);
 
         // Act
         var all = await _repository.GetAllAsync();
@@ -264,7 +261,7 @@ public class RegistryCacheRepositoryTests : IDisposable
             Server = new McpServer { Id = "test-server", Name = "Test Server" },
             RegistryName = "TestRegistry"
         };
-        await _repository.UpsertManyAsync("TestRegistry", new[] { result });
+        await _repository.UpsertManyAsync("TestRegistry", [result]);
 
         // Act
         var found = await _repository.GetByIdAsync("TestRegistry", "test-server");

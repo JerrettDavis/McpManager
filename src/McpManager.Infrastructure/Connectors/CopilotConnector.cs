@@ -30,7 +30,7 @@ public class CopilotConnector : IAgentConnector
         var configPath = GetCopilotConfigPath();
         if (!File.Exists(configPath))
         {
-            return Enumerable.Empty<string>();
+            return [];
         }
 
         try
@@ -41,7 +41,7 @@ public class CopilotConnector : IAgentConnector
         }
         catch
         {
-            return Enumerable.Empty<string>();
+            return [];
         }
     }
 

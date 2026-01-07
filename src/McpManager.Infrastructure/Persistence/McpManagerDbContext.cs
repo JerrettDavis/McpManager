@@ -7,15 +7,11 @@ namespace McpManager.Infrastructure.Persistence;
 /// Entity Framework Core database context for MCP Manager.
 /// Manages persistence of installed servers, cached registry data, and metadata.
 /// </summary>
-public class McpManagerDbContext : DbContext
+public class McpManagerDbContext(DbContextOptions<McpManagerDbContext> options) : DbContext(options)
 {
     public DbSet<InstalledServerEntity> InstalledServers => Set<InstalledServerEntity>();
     public DbSet<CachedRegistryServerEntity> CachedRegistryServers => Set<CachedRegistryServerEntity>();
     public DbSet<RegistryMetadataEntity> RegistryMetadata => Set<RegistryMetadataEntity>();
-
-    public McpManagerDbContext(DbContextOptions<McpManagerDbContext> options) : base(options)
-    {
-    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -8,28 +8,22 @@ namespace McpManager.Infrastructure.Registries;
 /// <summary>
 /// Registry that connects to the official MCP registry at mcp-get.com.
 /// </summary>
-public class McpGetRegistry : IServerRegistry
+public class McpGetRegistry(HttpClient httpClient) : IServerRegistry
 {
-    private readonly HttpClient _httpClient;
     private const string BaseUrl = "https://mcp-get.com/api/servers";
 
     public string Name => "MCP Get Registry";
-
-    public McpGetRegistry(HttpClient httpClient)
-    {
-        _httpClient = httpClient;
-    }
 
     public async Task<IEnumerable<ServerSearchResult>> SearchAsync(string query, int maxResults = 50)
     {
         try
         {
             var url = $"{BaseUrl}?search={Uri.EscapeDataString(query)}&limit={maxResults}";
-            var response = await _httpClient.GetAsync(url);
+            var response = await httpClient.GetAsync(url);
             
             if (!response.IsSuccessStatusCode)
             {
-                return Enumerable.Empty<ServerSearchResult>();
+                return [];
             }
 
             var json = await response.Content.ReadAsStringAsync();
@@ -37,14 +31,14 @@ public class McpGetRegistry : IServerRegistry
 
             if (apiResponse?.Servers == null)
             {
-                return Enumerable.Empty<ServerSearchResult>();
+                return [];
             }
 
             return apiResponse.Servers.Select(ConvertToSearchResult);
         }
         catch
         {
-            return Enumerable.Empty<ServerSearchResult>();
+            return [];
         }
     }
 
@@ -59,7 +53,7 @@ public class McpGetRegistry : IServerRegistry
             while (hasMore && page <= 10) // Limit to 10 pages
             {
                 var url = $"{BaseUrl}?page={page}&limit=50";
-                var response = await _httpClient.GetAsync(url);
+                var response = await httpClient.GetAsync(url);
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -84,7 +78,7 @@ public class McpGetRegistry : IServerRegistry
         }
         catch
         {
-            return Enumerable.Empty<ServerSearchResult>();
+            return [];
         }
     }
 
@@ -93,7 +87,7 @@ public class McpGetRegistry : IServerRegistry
         try
         {
             var url = $"{BaseUrl}/{serverId}";
-            var response = await _httpClient.GetAsync(url);
+            var response = await httpClient.GetAsync(url);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -134,7 +128,7 @@ public class McpGetRegistry : IServerRegistry
             Author = dto.Author ?? "Unknown",
             RepositoryUrl = dto.Repository ?? string.Empty,
             InstallCommand = dto.InstallCommand ?? $"npm install -g {dto.Name}",
-            Tags = dto.Tags ?? new List<string>()
+            Tags = dto.Tags ?? []
         };
     }
 

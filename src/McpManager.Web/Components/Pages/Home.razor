@@ -101,9 +101,9 @@
 </div>
 
 @code {
-    private IEnumerable<McpServer> installedServers = Enumerable.Empty<McpServer>();
-    private IEnumerable<Agent> detectedAgents = Enumerable.Empty<Agent>();
-    private IEnumerable<ServerInstallation> activeInstallations = Enumerable.Empty<ServerInstallation>();
+    private IEnumerable<McpServer> installedServers = [];
+    private IEnumerable<Agent> detectedAgents = [];
+    private IEnumerable<ServerInstallation> activeInstallations = [];
 
     protected override async Task OnInitializedAsync()
     {

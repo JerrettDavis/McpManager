@@ -2,7 +2,6 @@ using McpManager.Application.Services;
 using McpManager.Core.Interfaces;
 using McpManager.Core.Models;
 using Moq;
-using Xunit;
 
 namespace McpManager.Tests.Integration;
 
@@ -45,7 +44,7 @@ public class ConfigurationWorkflowTests
         mockCopilotConnector.Setup(c => c.AgentType).Returns(AgentType.GitHubCopilot);
         
         var connectors = new List<IAgentConnector> { mockClaudeConnector.Object, mockCopilotConnector.Object };
-        var installationManager = new InstallationManager(serverManager, mockAgentManager.Object, connectors);
+        var installationManager = new InstallationManager(serverManager, mockAgentManager.Object, connectors, []);
         var configService = new ConfigurationService(installationManager);
 
         // Create a server with initial global configuration
@@ -154,7 +153,7 @@ public class ConfigurationWorkflowTests
         mockConnector.Setup(c => c.AgentType).Returns(AgentType.Claude);
         
         var connectors = new List<IAgentConnector> { mockConnector.Object };
-        var installationManager = new InstallationManager(serverManager, mockAgentManager.Object, connectors);
+        var installationManager = new InstallationManager(serverManager, mockAgentManager.Object, connectors, []);
         var configurationService = new ConfigurationService(installationManager);
 
         var server = new McpServer
@@ -260,7 +259,7 @@ public class ConfigurationWorkflowTests
         mockConnector.Setup(c => c.AgentType).Returns(AgentType.Claude);
         
         var connectors = new List<IAgentConnector> { mockConnector.Object };
-        var installationManager = new InstallationManager(serverManager, mockAgentManager.Object, connectors);
+        var installationManager = new InstallationManager(serverManager, mockAgentManager.Object, connectors, []);
         var configurationService = new ConfigurationService(installationManager);
 
         var server = new McpServer

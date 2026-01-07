@@ -1,16 +1,10 @@
 using McpManager.Application.Services;
-using Xunit;
 
 namespace McpManager.Tests.Services;
 
 public class ConfigurationParserTests
 {
-    private readonly ConfigurationParser _parser;
-
-    public ConfigurationParserTests()
-    {
-        _parser = new ConfigurationParser();
-    }
+    private readonly ConfigurationParser _parser = new();
 
     [Fact]
     public void ParseConfiguration_WithEmptyString_ReturnsFalse()
@@ -43,17 +37,19 @@ public class ConfigurationParserTests
     public void ParseConfiguration_WithClaudeStyleFullConfig_ReturnsServer()
     {
         // Arrange
-        var config = @"{
-            ""mcpServers"": {
-                ""my-server"": {
-                    ""command"": ""node"",
-                    ""args"": ""/path/to/server.js""
-                }
-            }
-        }";
+        const string config = """
+                              {
+                                  "mcpServers": {
+                                      "my-server": {
+                                          "command": "node",
+                                          "args": "/path/to/server.js"
+                                      }
+                                  }
+                              }
+                              """;
 
         // Act
-        var (success, server, error) = _parser.ParseConfiguration(config);
+        var (success, server, _) = _parser.ParseConfiguration(config);
 
         // Assert
         Assert.True(success);
@@ -67,16 +63,18 @@ public class ConfigurationParserTests
     public void ParseConfiguration_WithCodexStyleSingleServer_ReturnsServer()
     {
         // Arrange
-        var config = @"{
-            ""command"": ""npx"",
-            ""args"": [""server-filesystem"", ""/path""],
-            ""env"": {
-                ""API_KEY"": ""test-key""
-            }
-        }";
+        const string config = """
+                              {
+                                  "command": "npx",
+                                  "args": ["server-filesystem", "/path"],
+                                  "env": {
+                                      "API_KEY": "test-key"
+                                  }
+                              }
+                              """;
 
         // Act
-        var (success, server, error) = _parser.ParseConfiguration(config, "test-server");
+        var (success, server, _) = _parser.ParseConfiguration(config, "test-server");
 
         // Assert
         Assert.True(success);
@@ -92,13 +90,15 @@ public class ConfigurationParserTests
     public void ParseConfiguration_WithCodexStyleArgsAsArray_ConvertsToString()
     {
         // Arrange
-        var config = @"{
-            ""command"": ""python"",
-            ""args"": [""-m"", ""myserver"", ""--port"", ""8080""]
-        }";
+        const string config = """
+                              {
+                                  "command": "python",
+                                  "args": ["-m", "myserver", "--port", "8080"]
+                              }
+                              """;
 
         // Act
-        var (success, server, error) = _parser.ParseConfiguration(config);
+        var (success, server, _) = _parser.ParseConfiguration(config);
 
         // Assert
         Assert.True(success);
@@ -112,14 +112,16 @@ public class ConfigurationParserTests
     public void ParseConfiguration_WithSimpleKeyValue_ReturnsServer()
     {
         // Arrange
-        var config = @"{
-            ""command"": ""node"",
-            ""path"": ""/usr/local/bin/server"",
-            ""enabled"": ""true""
-        }";
+        const string config = """
+                              {
+                                  "command": "node",
+                                  "path": "/usr/local/bin/server",
+                                  "enabled": "true"
+                              }
+                              """;
 
         // Act
-        var (success, server, error) = _parser.ParseConfiguration(config, "simple-server");
+        var (success, server, _) = _parser.ParseConfiguration(config, "simple-server");
 
         // Assert
         Assert.True(success);

@@ -1,5 +1,3 @@
-using McpManager.Core.Models;
-
 namespace McpManager.Core.Interfaces;
 
 /// <summary>

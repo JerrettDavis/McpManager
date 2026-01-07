@@ -81,5 +81,5 @@ public class ConfigurationValidationResult
     /// <summary>
     /// List of validation error messages.
     /// </summary>
-    public List<string> Errors { get; set; } = new();
+    public List<string> Errors { get; set; } = [];
 }

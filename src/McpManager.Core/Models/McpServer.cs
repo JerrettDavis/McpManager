@@ -43,7 +43,7 @@ public class McpServer
     /// <summary>
     /// Tags/categories for the server (e.g., "database", "api", "filesystem").
     /// </summary>
-    public List<string> Tags { get; set; } = new();
+    public List<string> Tags { get; set; } = [];
 
     /// <summary>
     /// Whether this server is currently installed locally.

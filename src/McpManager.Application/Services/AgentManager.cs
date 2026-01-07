@@ -6,20 +6,13 @@ namespace McpManager.Application.Services;
 /// <summary>
 /// Service for managing AI agents and their configurations.
 /// </summary>
-public class AgentManager : IAgentManager
+public class AgentManager(IEnumerable<IAgentConnector> connectors) : IAgentManager
 {
-    private readonly IEnumerable<IAgentConnector> _connectors;
-
-    public AgentManager(IEnumerable<IAgentConnector> connectors)
-    {
-        _connectors = connectors;
-    }
-
     public async Task<IEnumerable<Agent>> DetectInstalledAgentsAsync()
     {
         var agents = new List<Agent>();
 
-        foreach (var connector in _connectors)
+        foreach (var connector in connectors)
         {
             var isInstalled = await connector.IsAgentInstalledAsync();
             if (isInstalled)

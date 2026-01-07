@@ -88,7 +88,7 @@
                                                     @if (isConfigured)
                                                     {
                                                         <div class="btn-group btn-group-sm">
-                                                            <a href="/agents/@AgentId/servers/@server.Id" 
+                                                            <a href="/agents/@AgentId/servers/@Uri.EscapeDataString(server.Id)"
                                                                class="btn btn-outline-secondary">
                                                                 ⚙️
                                                             </a>
@@ -169,8 +169,8 @@
 
     private Agent? agent;
     private string agentName = string.Empty;
-    private List<McpServer> installedServers = new();
-    private List<ServerInstallation> serverInstallations = new();
+    private List<McpServer> installedServers = [];
+    private List<ServerInstallation> serverInstallations = [];
 
     protected override async Task OnInitializedAsync()
     {

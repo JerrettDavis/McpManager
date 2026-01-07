@@ -29,7 +29,7 @@ public class CodexConnector : IAgentConnector
         var configPath = GetCodexConfigPath();
         if (!File.Exists(configPath))
         {
-            return Enumerable.Empty<string>();
+            return [];
         }
 
         try
@@ -40,7 +40,7 @@ public class CodexConnector : IAgentConnector
         }
         catch
         {
-            return Enumerable.Empty<string>();
+            return [];
         }
     }
 
@@ -144,7 +144,7 @@ public class CodexConnector : IAgentConnector
     private class ServerConfig
     {
         public string Command { get; set; } = string.Empty;
-        public List<string> Args { get; set; } = new();
+        public List<string> Args { get; set; } = [];
         public Dictionary<string, string>? Env { get; set; }
         public bool Enabled { get; set; } = true;
     }

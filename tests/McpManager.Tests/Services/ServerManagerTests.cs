@@ -2,7 +2,6 @@ using McpManager.Application.Services;
 using McpManager.Core.Interfaces;
 using McpManager.Core.Models;
 using Moq;
-using Xunit;
 
 namespace McpManager.Tests.Services;
 

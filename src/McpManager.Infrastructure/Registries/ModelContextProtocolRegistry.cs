@@ -8,16 +8,9 @@ namespace McpManager.Infrastructure.Registries;
 /// <summary>
 /// Registry that connects to the official MCP registry at registry.modelcontextprotocol.io.
 /// </summary>
-public class ModelContextProtocolRegistry : IServerRegistry
+public class ModelContextProtocolRegistry(HttpClient httpClient) : IServerRegistry
 {
-    private readonly HttpClient _httpClient;
-
     public string Name => "Model Context Protocol Registry";
-
-    public ModelContextProtocolRegistry(HttpClient httpClient)
-    {
-        _httpClient = httpClient;
-    }
 
     public async Task<IEnumerable<ServerSearchResult>> SearchAsync(string query, int maxResults = 50)
     {
@@ -35,7 +28,7 @@ public class ModelContextProtocolRegistry : IServerRegistry
         }
         catch
         {
-            return Enumerable.Empty<ServerSearchResult>();
+            return [];
         }
     }
 
@@ -50,14 +43,15 @@ public class ModelContextProtocolRegistry : IServerRegistry
 
             do
             {
-                var url = string.IsNullOrEmpty(cursor) 
-                    ? "v0.1/servers" 
+                var url = string.IsNullOrEmpty(cursor)
+                    ? "v0.1/servers"
                     : $"v0.1/servers?cursor={Uri.EscapeDataString(cursor)}";
-                
-                var response = await _httpClient.GetAsync(url);
-                
+
+                var response = await httpClient.GetAsync(url);
+
                 if (!response.IsSuccessStatusCode)
                 {
+                    Console.WriteLine($"ModelContextProtocolRegistry: HTTP {response.StatusCode} for {url}");
                     break;
                 }
 
@@ -66,21 +60,24 @@ public class ModelContextProtocolRegistry : IServerRegistry
 
                 if (apiResponse?.Servers == null || !apiResponse.Servers.Any())
                 {
+                    Console.WriteLine($"ModelContextProtocolRegistry: No servers in response");
                     break;
                 }
 
                 allResults.AddRange(apiResponse.Servers.Select(ConvertToSearchResult));
-                
+
                 cursor = apiResponse.Metadata?.NextCursor;
                 page++;
-                
+
             } while (!string.IsNullOrEmpty(cursor) && page < maxPages);
 
+            Console.WriteLine($"ModelContextProtocolRegistry: Loaded {allResults.Count} servers");
             return allResults;
         }
-        catch
+        catch (Exception ex)
         {
-            return Enumerable.Empty<ServerSearchResult>();
+            Console.WriteLine($"ModelContextProtocolRegistry ERROR: {ex.Message}");
+            return [];
         }
     }
 
@@ -89,7 +86,7 @@ public class ModelContextProtocolRegistry : IServerRegistry
         try
         {
             var url = $"v0.1/servers/{Uri.EscapeDataString(serverId)}";
-            var response = await _httpClient.GetAsync(url);
+            var response = await httpClient.GetAsync(url);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -161,7 +158,7 @@ public class ModelContextProtocolRegistry : IServerRegistry
             Author = ExtractAuthor(dto.Name),
             RepositoryUrl = repoUrl,
             InstallCommand = installCommand,
-            Tags = new List<string>() // Registry doesn't provide tags in the schema
+            Tags = [] // Registry doesn't provide tags in the schema
         };
     }
 

@@ -75,7 +75,7 @@
                         </div>
                         <div class="card-footer bg-transparent">
                             <div class="d-grid gap-2">
-                                <a href="/servers/@server.Id" class="btn btn-outline-primary btn-sm">
+                                <a href="/servers/@Uri.EscapeDataString(server.Id)" class="btn btn-outline-primary btn-sm">
                                     ⚙️ Configure
                                 </a>
                                 <button class="btn btn-outline-danger btn-sm" @onclick="() => UninstallServerAsync(server.Id)">
@@ -91,8 +91,8 @@
 </div>
 
 @code {
-    private List<McpServer> installedServers = new();
-    private List<ServerInstallation> serverInstallations = new();
+    private List<McpServer> installedServers = [];
+    private List<ServerInstallation> serverInstallations = [];
 
     protected override async Task OnInitializedAsync()
     {

@@ -29,7 +29,7 @@ public class ClaudeConnector : IAgentConnector
         var configPath = GetClaudeConfigPath();
         if (!File.Exists(configPath))
         {
-            return Enumerable.Empty<string>();
+            return [];
         }
 
         try
@@ -40,7 +40,7 @@ public class ClaudeConnector : IAgentConnector
         }
         catch
         {
-            return Enumerable.Empty<string>();
+            return [];
         }
     }
 

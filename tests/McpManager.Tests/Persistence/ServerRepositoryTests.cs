@@ -4,7 +4,6 @@ using McpManager.Core.Models;
 using McpManager.Infrastructure.Persistence;
 using McpManager.Infrastructure.Persistence.Repositories;
 using Moq;
-using Xunit;
 
 namespace McpManager.Tests.Persistence;
 
@@ -58,7 +57,7 @@ public class ServerRepositoryTests : IDisposable
             Author = "Test Author",
             RepositoryUrl = "https://github.com/test/server",
             InstallCommand = "npm install test-server",
-            Tags = new List<string> { "test", "demo" },
+            Tags = ["test", "demo"],
             Configuration = new Dictionary<string, string>
             {
                 ["apiKey"] = "test-key",

@@ -2,7 +2,6 @@ using McpManager.Application.Services;
 using McpManager.Core.Interfaces;
 using McpManager.Core.Models;
 using Moq;
-using Xunit;
 
 namespace McpManager.Tests.Services;
 
@@ -16,7 +15,7 @@ public class AgentManagerTests
         mockConnector.Setup(c => c.AgentType).Returns(AgentType.Claude);
         mockConnector.Setup(c => c.IsAgentInstalledAsync()).ReturnsAsync(false);
 
-        var agentManager = new AgentManager(new[] { mockConnector.Object });
+        var agentManager = new AgentManager([mockConnector.Object]);
 
         // Act
         var agents = await agentManager.DetectInstalledAgentsAsync();
@@ -35,7 +34,7 @@ public class AgentManagerTests
         mockConnector.Setup(c => c.GetConfigurationPathAsync()).ReturnsAsync("/path/to/config");
         mockConnector.Setup(c => c.GetConfiguredServerIdsAsync()).ReturnsAsync(new List<string> { "server1", "server2" });
 
-        var agentManager = new AgentManager(new[] { mockConnector.Object });
+        var agentManager = new AgentManager([mockConnector.Object]);
 
         // Act
         var agents = await agentManager.DetectInstalledAgentsAsync();
@@ -67,7 +66,7 @@ public class AgentManagerTests
         copilotConnector.Setup(c => c.GetConfigurationPathAsync()).ReturnsAsync("/path/copilot");
         copilotConnector.Setup(c => c.GetConfiguredServerIdsAsync()).ReturnsAsync(new List<string>());
 
-        var agentManager = new AgentManager(new[] { claudeConnector.Object, copilotConnector.Object });
+        var agentManager = new AgentManager([claudeConnector.Object, copilotConnector.Object]);
 
         // Act
         var agents = await agentManager.DetectInstalledAgentsAsync();
@@ -88,7 +87,7 @@ public class AgentManagerTests
         mockConnector.Setup(c => c.GetConfigurationPathAsync()).ReturnsAsync("/path/to/config");
         mockConnector.Setup(c => c.GetConfiguredServerIdsAsync()).ReturnsAsync(new List<string>());
 
-        var agentManager = new AgentManager(new[] { mockConnector.Object });
+        var agentManager = new AgentManager([mockConnector.Object]);
 
         // Act
         var agent = await agentManager.GetAgentByIdAsync("claude");
@@ -103,7 +102,7 @@ public class AgentManagerTests
     public async Task GetAgentByIdAsync_ReturnsNullForNonExistentAgent()
     {
         // Arrange
-        var agentManager = new AgentManager(Array.Empty<IAgentConnector>());
+        var agentManager = new AgentManager([]);
 
         // Act
         var agent = await agentManager.GetAgentByIdAsync("non-existent");
@@ -122,7 +121,7 @@ public class AgentManagerTests
         mockConnector.Setup(c => c.GetConfigurationPathAsync()).ReturnsAsync("/path");
         mockConnector.Setup(c => c.GetConfiguredServerIdsAsync()).ReturnsAsync(new List<string> { "server1", "server2" });
 
-        var agentManager = new AgentManager(new[] { mockConnector.Object });
+        var agentManager = new AgentManager([mockConnector.Object]);
 
         // Act
         var serverIds = await agentManager.GetAgentServerIdsAsync("claude");

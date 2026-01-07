@@ -2,7 +2,6 @@ using McpManager.Application.Services;
 using McpManager.Core.Interfaces;
 using McpManager.Core.Models;
 using Moq;
-using Xunit;
 
 namespace McpManager.Tests.Services;
 
@@ -271,14 +270,14 @@ public class ConfigurationServiceTests
 
         _mockInstallationManager
             .Setup(m => m.GetInstallationsByServerIdAsync(serverId))
-            .ReturnsAsync(new[] { installation });
+            .ReturnsAsync([installation]);
 
         _mockInstallationManager
             .Setup(m => m.UpdateInstallationConfigAsync(installation.Id, It.IsAny<Dictionary<string, string>>()))
             .ReturnsAsync(true);
 
         // Act
-        var result = await _configurationService.PropagateConfigurationUpdateAsync(serverId, oldConfig, newConfig);
+        var result = (await _configurationService.PropagateConfigurationUpdateAsync(serverId, oldConfig, newConfig)).ToList();
 
         // Assert
         Assert.Single(result);
@@ -306,7 +305,7 @@ public class ConfigurationServiceTests
 
         _mockInstallationManager
             .Setup(m => m.GetInstallationsByServerIdAsync(serverId))
-            .ReturnsAsync(new[] { installation });
+            .ReturnsAsync([installation]);
 
         // Act
         var result = await _configurationService.PropagateConfigurationUpdateAsync(serverId, oldConfig, newConfig);

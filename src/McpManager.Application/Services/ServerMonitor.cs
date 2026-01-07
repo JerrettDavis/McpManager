@@ -1,5 +1,4 @@
 using McpManager.Core.Interfaces;
-using McpManager.Core.Models;
 
 namespace McpManager.Application.Services;
 

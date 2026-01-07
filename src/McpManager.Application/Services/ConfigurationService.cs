@@ -8,15 +8,8 @@ namespace McpManager.Application.Services;
 /// Service for managing MCP server configurations.
 /// Handles configuration comparison, propagation, and validation.
 /// </summary>
-public class ConfigurationService : IConfigurationService
+public class ConfigurationService(IInstallationManager installationManager) : IConfigurationService
 {
-    private readonly IInstallationManager _installationManager;
-
-    public ConfigurationService(IInstallationManager installationManager)
-    {
-        _installationManager = installationManager;
-    }
-
     public bool AreConfigurationsEqual(Dictionary<string, string> config1, Dictionary<string, string> config2)
     {
         // Handle null cases
@@ -47,13 +40,13 @@ public class ConfigurationService : IConfigurationService
         }
 
         // Otherwise, use the global server configuration
-        return new Dictionary<string, string>(server.Configuration ?? new Dictionary<string, string>());
+        return new Dictionary<string, string>(server.Configuration);
     }
 
     public bool DoesAgentConfigMatchGlobal(McpServer server, ServerInstallation installation)
     {
-        var globalConfig = server.Configuration ?? new Dictionary<string, string>();
-        var agentConfig = installation.AgentSpecificConfig ?? new Dictionary<string, string>();
+        var globalConfig = server.Configuration;
+        var agentConfig = installation.AgentSpecificConfig;
 
         return AreConfigurationsEqual(globalConfig, agentConfig);
     }
@@ -66,7 +59,7 @@ public class ConfigurationService : IConfigurationService
         var updatedInstallationIds = new List<string>();
 
         // Get all installations for this server
-        var installations = await _installationManager.GetInstallationsByServerIdAsync(serverId);
+        var installations = await installationManager.GetInstallationsByServerIdAsync(serverId);
 
         foreach (var installation in installations)
         {
@@ -74,7 +67,7 @@ public class ConfigurationService : IConfigurationService
             if (AreConfigurationsEqual(installation.AgentSpecificConfig, oldGlobalConfig))
             {
                 // Update to the new global config
-                await _installationManager.UpdateInstallationConfigAsync(installation.Id, new Dictionary<string, string>(newGlobalConfig));
+                await installationManager.UpdateInstallationConfigAsync(installation.Id, new Dictionary<string, string>(newGlobalConfig));
                 updatedInstallationIds.Add(installation.Id);
             }
         }

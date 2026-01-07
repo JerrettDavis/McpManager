@@ -2,7 +2,6 @@ using McpManager.Application.Services;
 using McpManager.Core.Interfaces;
 using McpManager.Core.Models;
 using Moq;
-using Xunit;
 
 namespace McpManager.Tests.Services;
 
@@ -23,7 +22,8 @@ public class InstallationManagerTests
         _installationManager = new InstallationManager(
             _mockServerManager.Object,
             _mockAgentManager.Object,
-            new[] { _mockConnector.Object });
+            [_mockConnector.Object],
+            []);
     }
 
     [Fact]
@@ -125,7 +125,8 @@ public class InstallationManagerTests
         var installationManager = new InstallationManager(
             _mockServerManager.Object,
             _mockAgentManager.Object,
-            new[] { _mockConnector.Object, mockConnector2.Object });
+            [_mockConnector.Object, mockConnector2.Object],
+            []);
 
         var agent1 = new Agent { Id = "claude", Type = AgentType.Claude };
         var agent2 = new Agent { Id = "copilot", Type = AgentType.GitHubCopilot };

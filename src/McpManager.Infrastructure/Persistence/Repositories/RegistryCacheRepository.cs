@@ -9,18 +9,11 @@ namespace McpManager.Infrastructure.Persistence.Repositories;
 /// <summary>
 /// Repository implementation for caching registry server data using EF Core.
 /// </summary>
-public class RegistryCacheRepository : IRegistryCacheRepository
+public class RegistryCacheRepository(McpManagerDbContext context) : IRegistryCacheRepository
 {
-    private readonly McpManagerDbContext _context;
-
-    public RegistryCacheRepository(McpManagerDbContext context)
-    {
-        _context = context;
-    }
-
     public async Task<IEnumerable<ServerSearchResult>> GetByRegistryAsync(string registryName)
     {
-        var entities = await _context.CachedRegistryServers
+        var entities = await context.CachedRegistryServers
             .Where(s => s.RegistryName == registryName)
             .ToListAsync();
 
@@ -29,7 +22,7 @@ public class RegistryCacheRepository : IRegistryCacheRepository
 
     public async Task<IEnumerable<ServerSearchResult>> GetAllAsync()
     {
-        var entities = await _context.CachedRegistryServers.ToListAsync();
+        var entities = await context.CachedRegistryServers.ToListAsync();
         return entities.Select(MapToModel);
     }
 
@@ -39,7 +32,7 @@ public class RegistryCacheRepository : IRegistryCacheRepository
         var escapedQuery = EscapeLikePattern(query.ToLowerInvariant());
         var pattern = $"%{escapedQuery}%";
 
-        var entities = await _context.CachedRegistryServers
+        var entities = await context.CachedRegistryServers
             .Where(s => EF.Functions.Like(s.Name, pattern, "\\") ||
                        EF.Functions.Like(s.Description, pattern, "\\") ||
                        EF.Functions.Like(s.TagsJson, pattern, "\\"))
@@ -62,7 +55,7 @@ public class RegistryCacheRepository : IRegistryCacheRepository
     public async Task<ServerSearchResult?> GetByIdAsync(string registryName, string serverId)
     {
         var id = GenerateId(registryName, serverId);
-        var entity = await _context.CachedRegistryServers.FindAsync(id);
+        var entity = await context.CachedRegistryServers.FindAsync(id);
         return entity == null ? null : MapToModel(entity);
     }
 
@@ -74,7 +67,7 @@ public class RegistryCacheRepository : IRegistryCacheRepository
         foreach (var server in serversList)
         {
             var id = GenerateId(registryName, server.Server.Id);
-            var existingEntity = await _context.CachedRegistryServers.FindAsync(id);
+            var existingEntity = await context.CachedRegistryServers.FindAsync(id);
 
             if (existingEntity != null)
             {
@@ -85,24 +78,24 @@ public class RegistryCacheRepository : IRegistryCacheRepository
             {
                 // Add new
                 var entity = MapToEntity(registryName, server);
-                _context.CachedRegistryServers.Add(entity);
+                context.CachedRegistryServers.Add(entity);
             }
             count++;
         }
 
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
         return count;
     }
 
     public async Task<DateTime?> GetLastRefreshTimeAsync(string registryName)
     {
-        var metadata = await _context.RegistryMetadata.FindAsync(registryName);
+        var metadata = await context.RegistryMetadata.FindAsync(registryName);
         return metadata?.LastRefreshAt;
     }
 
     public async Task UpdateRegistryMetadataAsync(string registryName, int serverCount, bool success, string? error = null)
     {
-        var metadata = await _context.RegistryMetadata.FindAsync(registryName);
+        var metadata = await context.RegistryMetadata.FindAsync(registryName);
 
         if (metadata == null)
         {
@@ -115,7 +108,7 @@ public class RegistryCacheRepository : IRegistryCacheRepository
                 LastRefreshError = error,
                 NextRefreshAt = DateTime.UtcNow.AddMinutes(60)
             };
-            _context.RegistryMetadata.Add(metadata);
+            context.RegistryMetadata.Add(metadata);
         }
         else
         {
@@ -126,13 +119,13 @@ public class RegistryCacheRepository : IRegistryCacheRepository
             metadata.NextRefreshAt = DateTime.UtcNow.AddMinutes(metadata.RefreshIntervalMinutes);
         }
 
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
     }
 
     public async Task<IEnumerable<string>> GetRegistriesNeedingRefreshAsync()
     {
         var now = DateTime.UtcNow;
-        var registries = await _context.RegistryMetadata
+        var registries = await context.RegistryMetadata
             .Where(m => m.NextRefreshAt == null || m.NextRefreshAt <= now)
             .Select(m => m.RegistryName)
             .ToListAsync();
@@ -142,7 +135,7 @@ public class RegistryCacheRepository : IRegistryCacheRepository
 
     public async Task<bool> IsCacheStaleAsync(string registryName, TimeSpan maxAge)
     {
-        var metadata = await _context.RegistryMetadata.FindAsync(registryName);
+        var metadata = await context.RegistryMetadata.FindAsync(registryName);
         
         if (metadata == null)
         {
@@ -171,7 +164,7 @@ public class RegistryCacheRepository : IRegistryCacheRepository
                 Author = entity.Author,
                 RepositoryUrl = entity.RepositoryUrl,
                 InstallCommand = entity.InstallCommand,
-                Tags = JsonSerializer.Deserialize<List<string>>(entity.TagsJson) ?? new List<string>(),
+                Tags = JsonSerializer.Deserialize<List<string>>(entity.TagsJson) ?? [],
                 IsInstalled = false
             },
             Score = entity.Score,

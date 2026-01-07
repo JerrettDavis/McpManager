@@ -11,8 +11,8 @@ public class MockServerRegistry : IServerRegistry
 {
     public string Name => "Mock MCP Registry";
 
-    private readonly List<McpServer> _mockServers = new()
-    {
+    private readonly List<McpServer> _mockServers =
+    [
         new McpServer
         {
             Id = "filesystem-server",
@@ -22,8 +22,9 @@ public class MockServerRegistry : IServerRegistry
             Author = "MCP Team",
             RepositoryUrl = "https://github.com/example/filesystem-server",
             InstallCommand = "npm install -g @modelcontextprotocol/server-filesystem",
-            Tags = new List<string> { "filesystem", "files", "storage" }
+            Tags = ["filesystem", "files", "storage"]
         },
+
         new McpServer
         {
             Id = "database-server",
@@ -33,8 +34,9 @@ public class MockServerRegistry : IServerRegistry
             Author = "MCP Team",
             RepositoryUrl = "https://github.com/example/database-server",
             InstallCommand = "npm install -g @modelcontextprotocol/server-database",
-            Tags = new List<string> { "database", "sql", "query" }
+            Tags = ["database", "sql", "query"]
         },
+
         new McpServer
         {
             Id = "api-server",
@@ -44,8 +46,9 @@ public class MockServerRegistry : IServerRegistry
             Author = "Community",
             RepositoryUrl = "https://github.com/example/api-server",
             InstallCommand = "npm install -g mcp-api-server",
-            Tags = new List<string> { "api", "rest", "http" }
+            Tags = ["api", "rest", "http"]
         },
+
         new McpServer
         {
             Id = "github-server",
@@ -55,8 +58,9 @@ public class MockServerRegistry : IServerRegistry
             Author = "GitHub",
             RepositoryUrl = "https://github.com/github/mcp-github-server",
             InstallCommand = "npm install -g @github/mcp-server",
-            Tags = new List<string> { "github", "git", "version-control" }
+            Tags = ["github", "git", "version-control"]
         },
+
         new McpServer
         {
             Id = "slack-server",
@@ -66,9 +70,9 @@ public class MockServerRegistry : IServerRegistry
             Author = "Community",
             RepositoryUrl = "https://github.com/example/slack-server",
             InstallCommand = "npm install -g mcp-slack-server",
-            Tags = new List<string> { "slack", "messaging", "communication" }
+            Tags = ["slack", "messaging", "communication"]
         }
-    };
+    ];
 
     public Task<IEnumerable<ServerSearchResult>> SearchAsync(string query, int maxResults = 50)
     {

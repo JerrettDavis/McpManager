@@ -30,8 +30,7 @@ class Program
         app.MainWindow
             .SetTitle("MCP Manager")
             .SetSize(1400, 900)
-            .SetResizable(true)
-            .SetIconFile("favicon.ico");
+            .SetResizable(true);
 
         AppDomain.CurrentDomain.UnhandledException += (sender, error) =>
         {

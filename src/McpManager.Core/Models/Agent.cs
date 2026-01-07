@@ -33,7 +33,7 @@ public class Agent
     /// <summary>
     /// List of MCP server IDs currently configured for this agent.
     /// </summary>
-    public List<string> ConfiguredServerIds { get; set; } = new();
+    public List<string> ConfiguredServerIds { get; set; } = [];
 }
 
 /// <summary>

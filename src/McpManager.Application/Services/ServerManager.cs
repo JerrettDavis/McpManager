@@ -7,51 +7,44 @@ namespace McpManager.Application.Services;
 /// Service for managing MCP servers.
 /// Implements business logic and orchestration with persistent storage.
 /// </summary>
-public class ServerManager : IServerManager
+public class ServerManager(IServerRepository repository) : IServerManager
 {
-    private readonly IServerRepository _repository;
-
-    public ServerManager(IServerRepository repository)
-    {
-        _repository = repository;
-    }
-
     public async Task<IEnumerable<McpServer>> GetInstalledServersAsync()
     {
-        return await _repository.GetAllAsync();
+        return await repository.GetAllAsync();
     }
 
     public async Task<McpServer?> GetServerByIdAsync(string serverId)
     {
-        return await _repository.GetByIdAsync(serverId);
+        return await repository.GetByIdAsync(serverId);
     }
 
     public async Task<bool> InstallServerAsync(McpServer server)
     {
-        if (await _repository.ExistsAsync(server.Id))
+        if (await repository.ExistsAsync(server.Id))
         {
             return false;
         }
 
         server.IsInstalled = true;
         server.InstalledAt = DateTime.UtcNow;
-        return await _repository.AddAsync(server);
+        return await repository.AddAsync(server);
     }
 
     public async Task<bool> UninstallServerAsync(string serverId)
     {
-        return await _repository.DeleteAsync(serverId);
+        return await repository.DeleteAsync(serverId);
     }
 
     public async Task<bool> UpdateServerConfigurationAsync(string serverId, Dictionary<string, string> configuration)
     {
-        var server = await _repository.GetByIdAsync(serverId);
+        var server = await repository.GetByIdAsync(serverId);
         if (server == null)
         {
             return false;
         }
 
         server.Configuration = configuration;
-        return await _repository.UpdateAsync(server);
+        return await repository.UpdateAsync(server);
     }
 }

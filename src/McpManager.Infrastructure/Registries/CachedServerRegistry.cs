@@ -7,32 +7,25 @@ namespace McpManager.Infrastructure.Registries;
 /// Caching wrapper for IServerRegistry that reads from local cache first.
 /// Implements read-through caching pattern.
 /// </summary>
-public class CachedServerRegistry : ICachedServerRegistry
+public class CachedServerRegistry(
+    IServerRegistry innerRegistry,
+    IRegistryCacheRepository cacheRepository,
+    TimeSpan? cacheMaxAge = null
+)
+    : ICachedServerRegistry
 {
-    private readonly IServerRegistry _innerRegistry;
-    private readonly IRegistryCacheRepository _cacheRepository;
-    private readonly TimeSpan _cacheMaxAge;
+    private readonly TimeSpan _cacheMaxAge = cacheMaxAge ?? TimeSpan.FromHours(1);
 
-    public string Name => _innerRegistry.Name;
-
-    public CachedServerRegistry(
-        IServerRegistry innerRegistry, 
-        IRegistryCacheRepository cacheRepository,
-        TimeSpan? cacheMaxAge = null)
-    {
-        _innerRegistry = innerRegistry;
-        _cacheRepository = cacheRepository;
-        _cacheMaxAge = cacheMaxAge ?? TimeSpan.FromHours(1);
-    }
+    public string Name => innerRegistry.Name;
 
     public async Task<IEnumerable<ServerSearchResult>> SearchAsync(string query, int maxResults = 50)
     {
         // Try cache first
-        var isCacheStale = await _cacheRepository.IsCacheStaleAsync(Name, _cacheMaxAge);
+        var isCacheStale = await cacheRepository.IsCacheStaleAsync(Name, _cacheMaxAge);
         
         if (!isCacheStale)
         {
-            var cachedResults = await _cacheRepository.SearchAsync(query, maxResults);
+            var cachedResults = await cacheRepository.SearchAsync(query, maxResults);
             var cachedList = cachedResults.Where(r => r.RegistryName == Name).ToList();
             
             if (cachedList.Any())
@@ -42,17 +35,17 @@ public class CachedServerRegistry : ICachedServerRegistry
         }
 
         // Fall back to remote registry
-        return await _innerRegistry.SearchAsync(query, maxResults);
+        return await innerRegistry.SearchAsync(query, maxResults);
     }
 
     public async Task<IEnumerable<ServerSearchResult>> GetAllServersAsync()
     {
         // Try cache first
-        var isCacheStale = await _cacheRepository.IsCacheStaleAsync(Name, _cacheMaxAge);
+        var isCacheStale = await cacheRepository.IsCacheStaleAsync(Name, _cacheMaxAge);
         
         if (!isCacheStale)
         {
-            var cachedResults = await _cacheRepository.GetByRegistryAsync(Name);
+            var cachedResults = await cacheRepository.GetByRegistryAsync(Name);
             var cachedList = cachedResults.ToList();
             
             if (cachedList.Any())
@@ -62,17 +55,17 @@ public class CachedServerRegistry : ICachedServerRegistry
         }
 
         // Fall back to remote registry
-        return await _innerRegistry.GetAllServersAsync();
+        return await innerRegistry.GetAllServersAsync();
     }
 
     public async Task<McpServer?> GetServerDetailsAsync(string serverId)
     {
         // Try cache first
-        var isCacheStale = await _cacheRepository.IsCacheStaleAsync(Name, _cacheMaxAge);
+        var isCacheStale = await cacheRepository.IsCacheStaleAsync(Name, _cacheMaxAge);
         
         if (!isCacheStale)
         {
-            var cached = await _cacheRepository.GetByIdAsync(Name, serverId);
+            var cached = await cacheRepository.GetByIdAsync(Name, serverId);
             if (cached != null)
             {
                 return cached.Server;
@@ -80,6 +73,6 @@ public class CachedServerRegistry : ICachedServerRegistry
         }
 
         // Fall back to remote registry
-        return await _innerRegistry.GetServerDetailsAsync(serverId);
+        return await innerRegistry.GetServerDetailsAsync(serverId);
     }
 }

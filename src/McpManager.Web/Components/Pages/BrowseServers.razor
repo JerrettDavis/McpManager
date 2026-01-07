@@ -19,7 +19,7 @@
     <div class="row mb-4">
         <div class="col-md-6">
             <div class="input-group input-group-lg">
-                <input type="text" class="form-control" placeholder="Search servers..." 
+                <input type="text" class="form-control" placeholder="Search servers..."
                        @bind="searchQuery" @bind:event="oninput" @onkeyup="HandleSearch" />
                 <button class="btn btn-primary" @onclick="PerformSearchAsync">
                     <span class="oi oi-magnifying-glass"></span> Search
@@ -27,7 +27,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <select class="form-select form-select-lg" @bind="selectedRegistry">
+            <select class="form-select form-select-lg" @bind="selectedRegistry" @bind:after="OnRegistryChanged">
                 <option value="">All Registries</option>
                 @foreach (var registry in ServerRegistries)
                 {
@@ -36,35 +36,57 @@
             </select>
         </div>
         <div class="col-md-3">
-            <button class="btn btn-outline-secondary btn-lg w-100" @onclick="LoadAllServersAsync">
-                Show All Servers
+            <button class="btn btn-outline-secondary btn-lg w-100" @onclick="RefreshAllAsync">
+                <span class="oi oi-reload"></span> Refresh
             </button>
         </div>
     </div>
 
-    @if (isLoading)
+    <!-- Loading Status Bar -->
+    @if (loadingRegistries.Any())
     {
-        <div class="text-center py-5">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
+        <div class="alert alert-info mb-4">
+            <div class="d-flex align-items-center">
+                <div class="spinner-border spinner-border-sm me-2" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <div class="flex-grow-1">
+                    <strong>Loading servers...</strong>
+                    <div class="mt-1">
+                        @foreach (var registry in loadingRegistries)
+                        {
+                            <span class="badge bg-primary me-1">@registry</span>
+                        }
+                    </div>
+                </div>
+                <div class="text-end">
+                    <small class="text-muted">@searchResults.Count servers loaded</small>
+                </div>
             </div>
-            <p class="mt-2">Loading servers...</p>
         </div>
     }
-    else if (!string.IsNullOrEmpty(errorMessage))
+    else if (loadedRegistries.Any())
     {
-        <div class="alert alert-danger">
-            <h4 class="alert-heading">Error Loading Servers</h4>
-            <p>@errorMessage</p>
-            <button class="btn btn-outline-danger" @onclick="LoadAllServersAsync">
-                🔄 Retry
-            </button>
+        <div class="mb-3">
+            <small class="text-muted">
+                Loaded from @loadedRegistries.Count registries:
+                @string.Join(", ", loadedRegistries.Select(r => $"{r.Name} ({r.Count})"))
+            </small>
         </div>
     }
-    else if (!searchResults.Any())
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-warning alert-dismissible fade show">
+            <strong>Warning:</strong> @errorMessage
+            <button type="button" class="btn-close" @onclick="() => errorMessage = null"></button>
+        </div>
+    }
+
+    @if (!searchResults.Any() && !loadingRegistries.Any())
     {
         <div class="alert alert-info">
-            <strong>No servers found.</strong> Try a different search term or click "Show All Servers".
+            <strong>No servers found.</strong> Try a different search term or wait for registries to load.
             <div class="mt-2">
                 <small class="text-muted">Registries available: @ServerRegistries.Count()</small>
             </div>
@@ -88,7 +110,7 @@
                                 }
                             </div>
                             <small class="text-muted d-block mb-1">
-                                <strong>@result.DownloadCount</strong> downloads · 
+                                <strong>@result.DownloadCount</strong> downloads ·
                                 Updated @FormatDate(result.LastUpdated)
                             </small>
                             <small class="text-muted">
@@ -111,6 +133,36 @@
                         </div>
                     </div>
                 </div>
+            }
+
+            <!-- Skeleton Loading Cards -->
+            @if (loadingRegistries.Any())
+            {
+                @for (int i = 0; i < Math.Min(6, pageSize - GetPagedResults().Count()); i++)
+                {
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="placeholder-glow">
+                                    <h5 class="card-title placeholder col-6"></h5>
+                                    <h6 class="card-subtitle mb-2 placeholder col-4"></h6>
+                                    <p class="card-text">
+                                        <span class="placeholder col-7"></span>
+                                        <span class="placeholder col-4"></span>
+                                        <span class="placeholder col-8"></span>
+                                    </p>
+                                    <span class="placeholder col-3 me-1"></span>
+                                    <span class="placeholder col-3"></span>
+                                </div>
+                            </div>
+                            <div class="card-footer bg-transparent">
+                                <div class="placeholder-glow">
+                                    <span class="placeholder col-12 btn"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
             }
         </div>
 
@@ -164,10 +216,11 @@
 @code {
     private string searchQuery = string.Empty;
     private string selectedRegistry = string.Empty;
-    private List<ServerSearchResult> searchResults = new();
-    private bool isLoading = true;
+    private List<ServerSearchResult> searchResults = [];
+    private HashSet<string> loadingRegistries = [];
+    private List<(string Name, int Count)> loadedRegistries = [];
     private string? errorMessage = null;
-    
+
     // Pagination
     private int currentPage = 1;
     private const int pageSize = 12; // 12 servers per page (3 columns x 4 rows)
@@ -175,7 +228,13 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadAllServersAsync();
+        // Start loading immediately in background - don't await!
+        _ = LoadAllServersProgressivelyAsync();
+    }
+
+    private async Task OnRegistryChanged()
+    {
+        await LoadAllServersProgressivelyAsync();
     }
 
     private IEnumerable<ServerSearchResult> GetPagedResults()
@@ -227,97 +286,145 @@
         StateHasChanged();
     }
 
-    private async Task LoadAllServersAsync()
+    private async Task LoadAllServersProgressivelyAsync()
     {
-        isLoading = true;
         errorMessage = null;
-        currentPage = 1; // Reset to first page
-        var allResults = new List<ServerSearchResult>();
+        currentPage = 1;
+        searchResults.Clear();
+        loadedRegistries.Clear();
+        loadingRegistries.Clear();
 
-        try
+        var registries = string.IsNullOrEmpty(selectedRegistry)
+            ? ServerRegistries
+            : ServerRegistries.Where(r => r.Name == selectedRegistry);
+
+        var registryList = registries.ToList();
+
+        // Mark all as loading
+        foreach (var registry in registryList)
         {
-            var registries = string.IsNullOrEmpty(selectedRegistry) 
-                ? ServerRegistries 
-                : ServerRegistries.Where(r => r.Name == selectedRegistry);
+            loadingRegistries.Add(registry.Name);
+        }
+        StateHasChanged();
 
-            foreach (var registry in registries)
+        // Load from each registry in parallel
+        var tasks = registryList.Select(async registry =>
+        {
+            try
             {
-                try
-                {
-                    var results = await registry.GetAllServersAsync();
-                    allResults.AddRange(results);
-                }
-                catch (Exception ex)
-                {
-                    errorMessage = $"Error loading from {registry.Name}: {ex.Message}";
-                }
-            }
+                var results = await registry.GetAllServersAsync();
+                var resultList = results.ToList();
 
-            searchResults = allResults
+                // Add results to the shared list (thread-safe on Blazor Server)
+                lock (searchResults)
+                {
+                    searchResults.AddRange(resultList);
+                    loadingRegistries.Remove(registry.Name);
+                    loadedRegistries.Add((registry.Name, resultList.Count));
+                }
+
+                // Update UI after each registry completes
+                await InvokeAsync(StateHasChanged);
+            }
+            catch (Exception ex)
+            {
+                lock (searchResults)
+                {
+                    loadingRegistries.Remove(registry.Name);
+                }
+                errorMessage = $"Error loading from {registry.Name}: {ex.Message}";
+                await InvokeAsync(StateHasChanged);
+            }
+        });
+
+        await Task.WhenAll(tasks);
+
+        // Deduplicate after all loaded
+        lock (searchResults)
+        {
+            searchResults = searchResults
                 .GroupBy(r => r.Server.Id)
                 .Select(g => g.First())
                 .ToList();
+        }
 
-            await CheckInstalledStatusAsync();
-        }
-        catch (Exception ex)
-        {
-            errorMessage = $"Unexpected error: {ex.Message}";
-        }
-        finally
-        {
-            isLoading = false;
-        }
+        await CheckInstalledStatusAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task RefreshAllAsync()
+    {
+        await LoadAllServersProgressivelyAsync();
     }
 
     private async Task PerformSearchAsync()
     {
         if (string.IsNullOrWhiteSpace(searchQuery))
         {
-            await LoadAllServersAsync();
+            await LoadAllServersProgressivelyAsync();
             return;
         }
 
-        isLoading = true;
         errorMessage = null;
-        currentPage = 1; // Reset to first page
-        var allResults = new List<ServerSearchResult>();
+        currentPage = 1;
+        searchResults.Clear();
+        loadedRegistries.Clear();
+        loadingRegistries.Clear();
 
-        try
+        var registries = string.IsNullOrEmpty(selectedRegistry)
+            ? ServerRegistries
+            : ServerRegistries.Where(r => r.Name == selectedRegistry);
+
+        var registryList = registries.ToList();
+
+        foreach (var registry in registryList)
         {
-            var registries = string.IsNullOrEmpty(selectedRegistry) 
-                ? ServerRegistries 
-                : ServerRegistries.Where(r => r.Name == selectedRegistry);
+            loadingRegistries.Add(registry.Name);
+        }
+        StateHasChanged();
 
-            foreach (var registry in registries)
+        // Search registries in parallel
+        var tasks = registryList.Select(async registry =>
+        {
+            try
             {
-                try
-                {
-                    var results = await registry.SearchAsync(searchQuery);
-                    allResults.AddRange(results);
-                }
-                catch (Exception ex)
-                {
-                    errorMessage = $"Error searching {registry.Name}: {ex.Message}";
-                }
-            }
+                var results = await registry.SearchAsync(searchQuery);
+                var resultList = results.ToList();
 
-            searchResults = allResults
+                lock (searchResults)
+                {
+                    searchResults.AddRange(resultList);
+                    loadingRegistries.Remove(registry.Name);
+                    loadedRegistries.Add((registry.Name, resultList.Count));
+                }
+
+                await InvokeAsync(StateHasChanged);
+            }
+            catch (Exception ex)
+            {
+                lock (searchResults)
+                {
+                    loadingRegistries.Remove(registry.Name);
+                }
+                errorMessage = $"Error searching {registry.Name}: {ex.Message}";
+                await InvokeAsync(StateHasChanged);
+            }
+        });
+
+        await Task.WhenAll(tasks);
+
+        // Sort by score and deduplicate
+        lock (searchResults)
+        {
+            searchResults = searchResults
                 .GroupBy(r => r.Server.Id)
                 .Select(g => g.OrderByDescending(x => x.Score).First())
                 .OrderByDescending(r => r.Score)
                 .ToList();
+        }
 
-            await CheckInstalledStatusAsync();
-        }
-        catch (Exception ex)
-        {
-            errorMessage = $"Unexpected error: {ex.Message}";
-        }
-        finally
-        {
-            isLoading = false;
-        }
+        await CheckInstalledStatusAsync();
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task HandleSearch(KeyboardEventArgs e)

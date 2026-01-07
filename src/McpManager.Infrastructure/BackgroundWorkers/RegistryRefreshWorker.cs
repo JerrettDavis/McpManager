@@ -9,27 +9,20 @@ namespace McpManager.Infrastructure.BackgroundWorkers;
 /// Background worker that periodically refreshes cached registry data.
 /// Runs asynchronously without blocking the UI.
 /// </summary>
-public class RegistryRefreshWorker : BackgroundService
+public class RegistryRefreshWorker(
+    IServiceProvider serviceProvider,
+    ILogger<RegistryRefreshWorker> logger
+)
+    : BackgroundService
 {
-    private readonly IServiceProvider _serviceProvider;
-    private readonly ILogger<RegistryRefreshWorker> _logger;
-    private readonly TimeSpan _refreshInterval;
-
-    public RegistryRefreshWorker(
-        IServiceProvider serviceProvider,
-        ILogger<RegistryRefreshWorker> logger)
-    {
-        _serviceProvider = serviceProvider;
-        _logger = logger;
-        _refreshInterval = TimeSpan.FromMinutes(60); // Default 1 hour
-    }
+    private readonly TimeSpan _refreshInterval = TimeSpan.FromMinutes(60); // Default 1 hour
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("Registry Refresh Worker starting");
+        logger.LogInformation("Registry Refresh Worker starting");
 
-        // Initial delay to let the application start up
-        await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+        // Initial delay to let the application start up (reduced to 2 seconds for better UX)
+        await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -39,23 +32,23 @@ public class RegistryRefreshWorker : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred during registry refresh");
+                logger.LogError(ex, "Error occurred during registry refresh");
             }
 
             // Wait for next refresh interval
             await Task.Delay(_refreshInterval, stoppingToken);
         }
 
-        _logger.LogInformation("Registry Refresh Worker stopping");
+        logger.LogInformation("Registry Refresh Worker stopping");
     }
 
     private async Task RefreshRegistriesAsync(CancellationToken cancellationToken)
     {
-        using var scope = _serviceProvider.CreateScope();
+        using var scope = serviceProvider.CreateScope();
         var cacheRepository = scope.ServiceProvider.GetRequiredService<IRegistryCacheRepository>();
         var registries = scope.ServiceProvider.GetServices<IServerRegistry>().ToList();
 
-        _logger.LogInformation("Starting registry refresh for {Count} registries", registries.Count);
+        logger.LogInformation("Starting registry refresh for {Count} registries", registries.Count);
 
         foreach (var registry in registries)
         {
@@ -67,7 +60,7 @@ public class RegistryRefreshWorker : BackgroundService
             await RefreshRegistryAsync(registry, cacheRepository, cancellationToken);
         }
 
-        _logger.LogInformation("Registry refresh completed");
+        logger.LogInformation("Registry refresh completed");
     }
 
     private async Task RefreshRegistryAsync(
@@ -77,12 +70,12 @@ public class RegistryRefreshWorker : BackgroundService
     {
         try
         {
-            _logger.LogInformation("Refreshing registry: {RegistryName}", registry.Name);
+            logger.LogInformation("Refreshing registry: {RegistryName}", registry.Name);
 
             // Check if this is a cached wrapper - if so, skip it to avoid double-wrapping
             if (registry is ICachedServerRegistry)
             {
-                _logger.LogDebug("Skipping cached wrapper for {RegistryName}", registry.Name);
+                logger.LogDebug("Skipping cached wrapper for {RegistryName}", registry.Name);
                 return;
             }
 
@@ -92,13 +85,13 @@ public class RegistryRefreshWorker : BackgroundService
             var count = await cacheRepository.UpsertManyAsync(registry.Name, serverList);
             await cacheRepository.UpdateRegistryMetadataAsync(registry.Name, count, true);
 
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Successfully refreshed {RegistryName}: {Count} servers cached",
                 registry.Name, count);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to refresh registry: {RegistryName}", registry.Name);
+            logger.LogError(ex, "Failed to refresh registry: {RegistryName}", registry.Name);
             await cacheRepository.UpdateRegistryMetadataAsync(
                 registry.Name, 
                 0, 

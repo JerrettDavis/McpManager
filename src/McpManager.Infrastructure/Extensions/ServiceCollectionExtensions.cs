@@ -1,5 +1,6 @@
 using McpManager.Core.Interfaces;
 using McpManager.Application.Services;
+using McpManager.Core.Models;
 using McpManager.Infrastructure.Connectors;
 using McpManager.Infrastructure.Registries;
 using McpManager.Infrastructure.Persistence;
@@ -44,19 +45,52 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IServerRepository, ServerRepository>();
         services.AddScoped<IRegistryCacheRepository, RegistryCacheRepository>();
 
-        // Register HttpClient for MCP registries
-        services.AddHttpClient<IServerRegistry, ModelContextProtocolRegistry>(client =>
+        // Register HttpClient for MCP registries with proper factory pattern
+        services.AddHttpClient("ModelContextProtocolRegistry", client =>
         {
             client.BaseAddress = new Uri("https://registry.modelcontextprotocol.io/");
             client.DefaultRequestHeaders.Add("User-Agent", "McpManager/1.0");
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
+        services.AddSingleton<IServerRegistry>(sp =>
+        {
+            var factory = sp.GetRequiredService<IHttpClientFactory>();
+            var client = factory.CreateClient("ModelContextProtocolRegistry");
+            return new ModelContextProtocolRegistry(client);
+        });
+
+        services.AddHttpClient("McpServersComRegistry", client =>
+        {
+            client.BaseAddress = new Uri("https://api.mcpservers.com/api/v1/");
+            client.DefaultRequestHeaders.Add("User-Agent", "McpManager/1.0");
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
+        services.AddSingleton<IServerRegistry>(sp =>
+        {
+            var factory = sp.GetRequiredService<IHttpClientFactory>();
+            var client = factory.CreateClient("McpServersComRegistry");
+            return new McpServersComRegistry(client);
+        });
+
+        services.AddHttpClient("ModelContextProtocolGitHubRegistry", client =>
+        {
+            client.DefaultRequestHeaders.Add("User-Agent", "McpManager/1.0");
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
+        services.AddSingleton<IServerRegistry>(sp =>
+        {
+            var factory = sp.GetRequiredService<IHttpClientFactory>();
+            var client = factory.CreateClient("ModelContextProtocolGitHubRegistry");
+            return new ModelContextProtocolGitHubRegistry(client);
         });
 
         // Register application services
         services.AddScoped<IServerManager, ServerManager>();
+        services.AddScoped<IInstallationManager, InstallationManager>();
+        services.AddScoped<IConfigurationService, ConfigurationService>();
         services.AddSingleton<IAgentManager, AgentManager>();
-        services.AddSingleton<IInstallationManager, InstallationManager>();
+        services.AddSingleton<ICollection<ServerInstallation>, List<ServerInstallation>>(_ => []);
         services.AddSingleton<IServerMonitor, ServerMonitor>();
-        services.AddSingleton<IConfigurationService, ConfigurationService>();
         services.AddSingleton<ConfigurationParser>();
 
         // Register agent connectors
@@ -65,7 +99,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IAgentConnector, ClaudeCodeConnector>();
         services.AddSingleton<IAgentConnector, CodexConnector>();
 
-        // Register server registries (Mock registry for demo/fallback)
+        // Register mock registry for demo/fallback
         services.AddSingleton<IServerRegistry, MockServerRegistry>();
 
         return services;
