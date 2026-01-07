@@ -168,29 +168,22 @@ public class RegistryEndToEndTests(ITestOutputHelper output)
 
         output.WriteLine($"Found {registries.Count} registries");
 
-        // Manually execute what the background worker would do
+        // Manually execute refresh logic
+        // With CachedServerRegistry wrappers, we can simply call GetAllServersAsync()
+        // which will populate the cache if it's empty or stale (read-through caching)
         var refreshedCount = 0;
         var failedCount = 0;
 
         foreach (var registry in registries)
         {
-            // Skip cached wrappers (as the worker does)
-            if (registry is ICachedServerRegistry)
-            {
-                output.WriteLine($"Skipping cached wrapper: {registry.Name}");
-                continue;
-            }
-
             try
             {
                 output.WriteLine($"Refreshing {registry.Name}...");
+                // Calling GetAllServersAsync will trigger read-through caching
                 var servers = await registry.GetAllServersAsync();
                 var serverList = servers.ToList();
-
-                var count = await cacheRepo.UpsertManyAsync(registry.Name, serverList);
-                await cacheRepo.UpdateRegistryMetadataAsync(registry.Name, count, true);
-
-                output.WriteLine($"  ✓ Cached {count} servers");
+                
+                output.WriteLine($"  ✓ Cached {serverList.Count} servers");
                 refreshedCount++;
             }
             catch (Exception ex)
@@ -347,9 +340,9 @@ public class RegistryEndToEndTests(ITestOutputHelper output)
         var directQueryResults = new Dictionary<string, int>();
         var cacheQueryResults = new Dictionary<string, int>();
 
-        // Query each registry directly
+        // Query each registry directly (will trigger read-through caching with CachedServerRegistry)
         output.WriteLine("Direct Registry Queries:");
-        foreach (var registry in registries.Where(r => r is not ICachedServerRegistry))
+        foreach (var registry in registries)
         {
             try
             {
@@ -357,9 +350,6 @@ public class RegistryEndToEndTests(ITestOutputHelper output)
                 var count = servers.Count();
                 directQueryResults[registry.Name] = count;
                 output.WriteLine($"  {registry.Name}: {count} servers");
-
-                // Also populate cache
-                await cacheRepo.UpsertManyAsync(registry.Name, servers.ToList());
             }
             catch (Exception ex)
             {
@@ -368,9 +358,9 @@ public class RegistryEndToEndTests(ITestOutputHelper output)
             }
         }
 
-        // Query cache
+        // Query cache directly
         output.WriteLine("\nCache Queries:");
-        foreach (var registry in registries.Where(r => r is not ICachedServerRegistry))
+        foreach (var registry in registries)
         {
             var cached = await cacheRepo.GetByRegistryAsync(registry.Name);
             var count = cached.Count();

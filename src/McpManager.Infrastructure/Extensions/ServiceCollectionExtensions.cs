@@ -109,8 +109,12 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IAgentConnector, ClaudeCodeConnector>();
         services.AddSingleton<IAgentConnector, CodexConnector>();
 
-        // Register mock registry for demo/fallback
-        services.AddSingleton<IServerRegistry, MockServerRegistry>();
+        // Register mock registry for demo/fallback, wrapped with caching
+        services.AddSingleton<IServerRegistry>(sp =>
+        {
+            var innerRegistry = new MockServerRegistry();
+            return new CachedServerRegistry(innerRegistry, sp);
+        });
 
         return services;
     }
