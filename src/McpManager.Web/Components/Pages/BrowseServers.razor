@@ -19,7 +19,7 @@
 
     <div class="row mb-4">
         <div class="col-md-4">
-            <div class="input-group input-group-lg">
+            <div class="input-group">
                 <input type="text" class="form-control" placeholder="Search servers..."
                        value="@_searchQuery" @oninput="OnSearchInput" />
                 <span class="input-group-text">
@@ -38,7 +38,7 @@
             <small class="text-muted">Live search - results update as you type</small>
         </div>
         <div class="col-md-2">
-            <select class="form-select form-select-lg" @bind="selectedRegistry" @bind:after="OnFilterChanged">
+            <select class="form-select" @bind="selectedRegistry" @bind:after="OnFilterChanged">
                 <option value="">All Registries</option>
                 @foreach (var registry in availableRegistries)
                 {
@@ -47,7 +47,7 @@
             </select>
         </div>
         <div class="col-md-2">
-            <select class="form-select form-select-lg" @bind="sortBy" @bind:after="OnFilterChanged">
+            <select class="form-select" @bind="sortBy" @bind:after="OnFilterChanged">
                 <option value="downloads">Most Downloads</option>
                 <option value="recent">Recently Updated</option>
                 <option value="name">Name (A-Z)</option>
@@ -55,7 +55,7 @@
             </select>
         </div>
         <div class="col-md-2">
-            <select class="form-select form-select-lg" @bind="categoryFilter" @bind:after="OnFilterChanged">
+            <select class="form-select" @bind="categoryFilter" @bind:after="OnFilterChanged">
                 <option value="">All Categories</option>
                 @foreach (var category in availableCategories.OrderBy(c => c))
                 {
@@ -64,7 +64,7 @@
             </select>
         </div>
         <div class="col-md-2">
-            <button class="btn btn-outline-secondary btn-lg w-100" @onclick="LoadDataAsync">
+            <button class="btn btn-outline-secondary w-100" @onclick="LoadDataAsync">
                 <span class="oi oi-reload"></span> Refresh
             </button>
         </div>
