@@ -72,16 +72,12 @@ public class RegistryRefreshWorker(
         {
             logger.LogInformation("Refreshing registry: {RegistryName}", registry.Name);
 
-            // Check if this is a cached wrapper - if so, skip it to avoid double-wrapping
-            if (registry is ICachedServerRegistry)
-            {
-                logger.LogDebug("Skipping cached wrapper for {RegistryName}", registry.Name);
-                return;
-            }
-
+            // For cached registries, force a refresh by checking if cache is stale
+            // The CachedServerRegistry will handle calling the inner registry and caching
             var servers = await registry.GetAllServersAsync();
             var serverList = servers.ToList();
 
+            // Ensure the cache is updated
             var count = await cacheRepository.UpsertManyAsync(registry.Name, serverList);
             await cacheRepository.UpdateRegistryMetadataAsync(registry.Name, count, true);
 
