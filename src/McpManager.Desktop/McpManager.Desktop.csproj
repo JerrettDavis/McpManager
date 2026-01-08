@@ -7,6 +7,20 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>McpManager.Desktop</RootNamespace>
   </PropertyGroup>
+  
+  <!-- Single-file executable configuration (only for publish) -->
+  <PropertyGroup Condition="'$(PublishSingleFile)' == 'true' or '$(RuntimeIdentifier)' != ''">
+    <SelfContained>true</SelfContained>
+    <PublishTrimmed>false</PublishTrimmed>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    
+    <!-- Optimize for startup and size -->
+    <PublishReadyToRun>false</PublishReadyToRun>
+    <TieredCompilation>true</TieredCompilation>
+    <TieredCompilationQuickJit>true</TieredCompilationQuickJit>
+  </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Photino.Blazor" Version="3.2.0" />
