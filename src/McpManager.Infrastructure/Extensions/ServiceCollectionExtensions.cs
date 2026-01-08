@@ -153,35 +153,35 @@ public static class ServiceCollectionExtensions
         
         try
         {
-            // Check if there are any pending migrations
+            // Always use Migrate() which will create database if needed and apply pending migrations
             var pendingMigrations = dbContext.Database.GetPendingMigrations().ToList();
             
             if (pendingMigrations.Any())
             {
                 Console.WriteLine($"Applying {pendingMigrations.Count} pending migration(s)...");
-                dbContext.Database.Migrate();
-                Console.WriteLine("Database migrations applied successfully.");
+                foreach (var migration in pendingMigrations)
+                {
+                    Console.WriteLine($"  - {migration}");
+                }
             }
-            else
+            
+            // Migrate() will create the database if it doesn't exist, and apply all pending migrations
+            dbContext.Database.Migrate();
+            
+            if (pendingMigrations.Any())
             {
-                // No pending migrations, just ensure database exists
-                dbContext.Database.EnsureCreated();
+                Console.WriteLine("Database migrations applied successfully.");
             }
         }
         catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.SqliteErrorCode == 1)
         {
-            // SQLite Error 1: Table already exists
-            // This means the database schema is already present but migration history may be out of sync
+            // SQLite Error 1: This shouldn't happen with Migrate(), but handle it anyway
             Console.WriteLine("Warning: Database tables already exist. Verifying migration history...");
             
             try
             {
-                // Try to mark all migrations as applied
                 var appliedMigrations = dbContext.Database.GetAppliedMigrations().ToList();
                 Console.WriteLine($"Database has {appliedMigrations.Count} migration(s) already applied.");
-                
-                // Database is functional, continue startup
-                dbContext.Database.EnsureCreated();
             }
             catch (Exception innerEx)
             {

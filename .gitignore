@@ -53,3 +53,8 @@ CodeCoverage/
 TestResult.xml
 nunit-*.xmlsrc/McpManager.Web/wwwroot/lib/
 McpManager.sln.DotSettings.user
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
