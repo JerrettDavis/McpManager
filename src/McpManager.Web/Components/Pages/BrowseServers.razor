@@ -16,7 +16,7 @@
     </div>
 
     <div class="row mb-4">
-        <div class="col-md-6">
+        <div class="col-md-4">
             <div class="input-group input-group-lg">
                 <input type="text" class="form-control" placeholder="Search servers..."
                        @bind="searchQuery" @bind:event="oninput" @onkeyup="HandleSearch" />
@@ -25,7 +25,7 @@
                 </button>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
             <select class="form-select form-select-lg" @bind="selectedRegistry" @bind:after="OnRegistryChanged">
                 <option value="">All Registries</option>
                 @foreach (var registry in ServerRegistries)
@@ -34,7 +34,24 @@
                 }
             </select>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
+            <select class="form-select form-select-lg" @bind="sortBy" @bind:after="ApplySortAndFilter">
+                <option value="downloads">Most Downloads</option>
+                <option value="recent">Recently Updated</option>
+                <option value="name">Name (A-Z)</option>
+                <option value="score">Relevance</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select class="form-select form-select-lg" @bind="categoryFilter" @bind:after="ApplySortAndFilter">
+                <option value="">All Categories</option>
+                @foreach (var category in availableCategories.OrderBy(c => c))
+                {
+                    <option value="@category">@category</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
             <button class="btn btn-outline-secondary btn-lg w-100" @onclick="RefreshAllAsync">
                 <span class="oi oi-reload"></span> Refresh
             </button>
@@ -215,9 +232,13 @@
 @code {
     private string searchQuery = string.Empty;
     private string selectedRegistry = string.Empty;
-    private List<ServerSearchResult> searchResults = [];
+    private string sortBy = "downloads"; // Default sort
+    private string categoryFilter = string.Empty;
+    private List<ServerSearchResult> allResults = []; // All loaded results
+    private List<ServerSearchResult> searchResults = []; // Filtered and sorted results
     private HashSet<string> loadingRegistries = [];
     private List<(string Name, int Count)> loadedRegistries = [];
+    private HashSet<string> availableCategories = [];
     private string? errorMessage = null;
 
     // Pagination
@@ -234,6 +255,50 @@
     private async Task OnRegistryChanged()
     {
         await LoadAllServersProgressivelyAsync();
+    }
+
+    private async Task ApplySortAndFilter()
+    {
+        currentPage = 1;
+        await Task.Run(() => UpdateSearchResults());
+        StateHasChanged();
+    }
+
+    private void UpdateSearchResults()
+    {
+        var filtered = allResults.AsEnumerable();
+
+        // Apply category filter
+        if (!string.IsNullOrEmpty(categoryFilter))
+        {
+            filtered = filtered.Where(r => r.Server.Tags.Contains(categoryFilter, StringComparer.OrdinalIgnoreCase));
+        }
+
+        // Apply sorting
+        filtered = sortBy switch
+        {
+            "downloads" => filtered.OrderByDescending(r => r.DownloadCount),
+            "recent" => filtered.OrderByDescending(r => r.LastUpdated ?? DateTime.MinValue),
+            "name" => filtered.OrderBy(r => r.Server.Name),
+            "score" => filtered.OrderByDescending(r => r.Score),
+            _ => filtered.OrderByDescending(r => r.DownloadCount)
+        };
+
+        lock (searchResults)
+        {
+            searchResults = filtered.ToList();
+        }
+    }
+
+    private void ExtractCategories()
+    {
+        var allTags = allResults
+            .SelectMany(r => r.Server.Tags)
+            .Where(t => !string.IsNullOrEmpty(t))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        availableCategories = allTags;
     }
 
     private IEnumerable<ServerSearchResult> GetPagedResults()
@@ -289,9 +354,11 @@
     {
         errorMessage = null;
         currentPage = 1;
+        allResults.Clear();
         searchResults.Clear();
         loadedRegistries.Clear();
         loadingRegistries.Clear();
+        availableCategories.Clear();
 
         var registries = string.IsNullOrEmpty(selectedRegistry)
             ? ServerRegistries
@@ -315,11 +382,15 @@
                 var resultList = results.ToList();
 
                 // Add results to the shared list (thread-safe on Blazor Server)
-                lock (searchResults)
+                lock (allResults)
                 {
-                    searchResults.AddRange(resultList);
+                    allResults.AddRange(resultList);
                     loadingRegistries.Remove(registry.Name);
                     loadedRegistries.Add((registry.Name, resultList.Count));
+                    
+                    // Update categories and apply sorting as we load
+                    ExtractCategories();
+                    UpdateSearchResults();
                 }
 
                 // Update UI after each registry completes
@@ -327,7 +398,7 @@
             }
             catch (Exception ex)
             {
-                lock (searchResults)
+                lock (allResults)
                 {
                     loadingRegistries.Remove(registry.Name);
                 }
@@ -339,12 +410,15 @@
         await Task.WhenAll(tasks);
 
         // Deduplicate after all loaded
-        lock (searchResults)
+        lock (allResults)
         {
-            searchResults = searchResults
+            allResults = allResults
                 .GroupBy(r => r.Server.Id)
-                .Select(g => g.First())
+                .Select(g => g.OrderByDescending(x => x.DownloadCount).First())
                 .ToList();
+            
+            ExtractCategories();
+            UpdateSearchResults();
         }
 
         await CheckInstalledStatusAsync();
@@ -366,9 +440,11 @@
 
         errorMessage = null;
         currentPage = 1;
+        allResults.Clear();
         searchResults.Clear();
         loadedRegistries.Clear();
         loadingRegistries.Clear();
+        availableCategories.Clear();
 
         var registries = string.IsNullOrEmpty(selectedRegistry)
             ? ServerRegistries
@@ -390,18 +466,22 @@
                 var results = await registry.SearchAsync(searchQuery);
                 var resultList = results.ToList();
 
-                lock (searchResults)
+                lock (allResults)
                 {
-                    searchResults.AddRange(resultList);
+                    allResults.AddRange(resultList);
                     loadingRegistries.Remove(registry.Name);
                     loadedRegistries.Add((registry.Name, resultList.Count));
+                    
+                    // Update categories and results as we load
+                    ExtractCategories();
+                    UpdateSearchResults();
                 }
 
                 await InvokeAsync(StateHasChanged);
             }
             catch (Exception ex)
             {
-                lock (searchResults)
+                lock (allResults)
                 {
                     loadingRegistries.Remove(registry.Name);
                 }
@@ -412,14 +492,18 @@
 
         await Task.WhenAll(tasks);
 
-        // Sort by score and deduplicate
-        lock (searchResults)
+        // Deduplicate and sort
+        lock (allResults)
         {
-            searchResults = searchResults
+            allResults = allResults
                 .GroupBy(r => r.Server.Id)
                 .Select(g => g.OrderByDescending(x => x.Score).First())
-                .OrderByDescending(r => r.Score)
                 .ToList();
+            
+            ExtractCategories();
+            // For search, default to score-based sorting
+            sortBy = "score";
+            UpdateSearchResults();
         }
 
         await CheckInstalledStatusAsync();

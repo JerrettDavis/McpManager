@@ -4,6 +4,27 @@ using McpManager.Infrastructure.BackgroundWorkers;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Check for --reset-db argument
+var resetDb = args.Contains("--reset-db", StringComparer.OrdinalIgnoreCase);
+if (resetDb)
+{
+    var dbPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "McpManager",
+        "mcpmanager.db");
+    
+    if (File.Exists(dbPath))
+    {
+        Console.WriteLine($"Deleting existing database at: {dbPath}");
+        File.Delete(dbPath);
+        Console.WriteLine("Database deleted successfully.");
+    }
+    else
+    {
+        Console.WriteLine("No existing database found to delete.");
+    }
+}
+
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
@@ -13,6 +34,7 @@ builder.Services.AddMcpManagerServices();
 
 // Register background workers
 builder.Services.AddHostedService<RegistryRefreshWorker>();
+builder.Services.AddHostedService<AgentServerSyncWorker>();
 
 var app = builder.Build();
 

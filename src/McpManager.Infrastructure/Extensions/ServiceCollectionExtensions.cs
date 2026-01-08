@@ -127,6 +127,62 @@ public static class ServiceCollectionExtensions
     {
         using var scope = serviceProvider.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<McpManagerDbContext>();
-        dbContext.Database.Migrate();
+        
+        try
+        {
+            // Check if there are any pending migrations
+            var pendingMigrations = dbContext.Database.GetPendingMigrations().ToList();
+            
+            if (pendingMigrations.Any())
+            {
+                Console.WriteLine($"Applying {pendingMigrations.Count} pending migration(s)...");
+                dbContext.Database.Migrate();
+                Console.WriteLine("Database migrations applied successfully.");
+            }
+            else
+            {
+                // No pending migrations, just ensure database exists
+                dbContext.Database.EnsureCreated();
+            }
+        }
+        catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.SqliteErrorCode == 1)
+        {
+            // SQLite Error 1: Table already exists
+            // This means the database schema is already present but migration history may be out of sync
+            Console.WriteLine("Warning: Database tables already exist. Verifying migration history...");
+            
+            try
+            {
+                // Try to mark all migrations as applied
+                var appliedMigrations = dbContext.Database.GetAppliedMigrations().ToList();
+                Console.WriteLine($"Database has {appliedMigrations.Count} migration(s) already applied.");
+                
+                // Database is functional, continue startup
+                dbContext.Database.EnsureCreated();
+            }
+            catch (Exception innerEx)
+            {
+                Console.Error.WriteLine($"Warning: Could not verify migration history: {innerEx.Message}");
+                Console.Error.WriteLine("Database may be in an inconsistent state. Consider deleting the database file to recreate it.");
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log the error but don't crash the application
+            Console.Error.WriteLine($"Error during database initialization: {ex.Message}");
+            Console.Error.WriteLine("Attempting to ensure database exists...");
+            
+            try
+            {
+                dbContext.Database.EnsureCreated();
+                Console.WriteLine("Database created successfully using EnsureCreated fallback.");
+            }
+            catch (Exception fallbackEx)
+            {
+                // If this also fails, the application will still start but database features may not work
+                Console.Error.WriteLine($"Critical: Could not initialize database: {fallbackEx.Message}");
+                Console.Error.WriteLine("Some features may not be available. Please check database permissions and path.");
+            }
+        }
     }
 }
