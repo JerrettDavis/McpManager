@@ -52,3 +52,4 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xmlsrc/McpManager.Web/wwwroot/lib/
+McpManager.sln.DotSettings.user

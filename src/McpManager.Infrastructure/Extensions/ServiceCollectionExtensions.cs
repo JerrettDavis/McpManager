@@ -29,6 +29,9 @@ public static class ServiceCollectionExtensions
         // Version service (singleton - computed once)
         services.AddSingleton<IVersionService, VersionService>();
         
+        // Server browse service (scoped - needs database access)
+        services.AddScoped<IServerBrowseService, ServerBrowseService>();
+        
         // Configure database
         var databasePath = dbPath ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
