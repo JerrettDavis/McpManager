@@ -3,6 +3,7 @@ using McpManager.Application.Services;
 using McpManager.Core.Models;
 using McpManager.Infrastructure.Connectors;
 using McpManager.Infrastructure.Registries;
+using McpManager.Infrastructure.Services;
 using McpManager.Infrastructure.Persistence;
 using McpManager.Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -32,6 +33,9 @@ public static class ServiceCollectionExtensions
         // Server browse service (scoped - needs database access)
         services.AddScoped<IServerBrowseService, ServerBrowseService>();
         
+        // Download stats service (scoped - needs HTTP and database)
+        services.AddScoped<IDownloadStatsService, DownloadStatsService>();
+        
         // Configure database
         var databasePath = dbPath ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -51,6 +55,19 @@ public static class ServiceCollectionExtensions
         // Register repositories
         services.AddScoped<IServerRepository, ServerRepository>();
         services.AddScoped<IRegistryCacheRepository, RegistryCacheRepository>();
+
+        // Register HttpClients for package registries
+        services.AddHttpClient("NpmRegistry", client =>
+        {
+            client.DefaultRequestHeaders.Add("User-Agent", "McpManager/1.0");
+            client.Timeout = TimeSpan.FromSeconds(10);
+        });
+        
+        services.AddHttpClient("PyPIRegistry", client =>
+        {
+            client.DefaultRequestHeaders.Add("User-Agent", "McpManager/1.0");
+            client.Timeout = TimeSpan.FromSeconds(10);
+        });
 
         // Register HttpClient for MCP registries with proper factory pattern
         services.AddHttpClient("ModelContextProtocolRegistry", client =>

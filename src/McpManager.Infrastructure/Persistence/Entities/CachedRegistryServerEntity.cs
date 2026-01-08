@@ -76,6 +76,11 @@ public class CachedRegistryServerEntity
     public DateTime FetchedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>
+    /// Date and time when download statistics were last updated.
+    /// </summary>
+    public DateTime? DownloadsLastUpdated { get; set; }
+
+    /// <summary>
     /// Additional metadata payload from the registry, stored as JSON.
     /// </summary>
     public string? MetadataJson { get; set; }
