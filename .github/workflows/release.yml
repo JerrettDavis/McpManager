@@ -4,6 +4,10 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_run:
+    workflows: ["Tag Release on Main Push"]
+    types:
+      - completed
   workflow_dispatch:
     inputs:
       version:
@@ -20,7 +24,45 @@ permissions:
   contents: read
 
 jobs:
+  # Determine version based on trigger type
+  get-version:
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+      version_tag: ${{ steps.get_version.outputs.version_tag }}
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        ref: ${{ github.event_name == 'workflow_run' && 'main' || github.ref }}
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+    
+    - name: Install nbgv tool
+      run: dotnet tool install -g nbgv
+    
+    - name: Get version
+      id: get_version
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          VERSION="${{ github.event.inputs.version }}"
+        elif [ "${{ github.event_name }}" = "push" ]; then
+          VERSION="${GITHUB_REF#refs/tags/}"
+        else
+          # workflow_run trigger - get from version.json
+          VERSION="v$(nbgv get-version -v Version)"
+        fi
+        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+        echo "version_tag=${VERSION#v}" >> $GITHUB_OUTPUT
+        echo "Building release for version: $VERSION"
+
   build-artifacts:
+    needs: get-version
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
@@ -92,6 +134,7 @@ jobs:
         if-no-files-found: ignore
 
   build-docker:
+    needs: get-version
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -112,26 +155,15 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     
-    - name: Extract version
-      id: version
-      run: |
-        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-          VERSION="${{ github.event.inputs.version }}"
-        else
-          VERSION="${GITHUB_REF#refs/tags/}"
-        fi
-        echo "version=${VERSION}" >> $GITHUB_OUTPUT
-        echo "version_tag=${VERSION#v}" >> $GITHUB_OUTPUT
-    
     - name: Extract metadata
       id: meta
       uses: docker/metadata-action@v5
       with:
         images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         tags: |
-          type=semver,pattern={{version}},value=${{ steps.version.outputs.version }}
-          type=semver,pattern={{major}}.{{minor}},value=${{ steps.version.outputs.version }}
-          type=semver,pattern={{major}},value=${{ steps.version.outputs.version }}
+          type=semver,pattern={{version}},value=${{ needs.get-version.outputs.version }}
+          type=semver,pattern={{major}}.{{minor}},value=${{ needs.get-version.outputs.version }}
+          type=semver,pattern={{major}},value=${{ needs.get-version.outputs.version }}
           type=raw,value=latest,enable={{is_default_branch}}
     
     - name: Build and push Docker image
@@ -146,7 +178,7 @@ jobs:
         platforms: linux/amd64,linux/arm64
 
   create-release:
-    needs: [build-artifacts, build-docker]
+    needs: [get-version, build-artifacts, build-docker]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -162,28 +194,19 @@ jobs:
         pattern: mcpmanager-*
         path: ./artifacts
     
-    - name: Extract version
-      id: version
-      run: |
-        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-          VERSION="${{ github.event.inputs.version }}"
-        else
-          VERSION="${GITHUB_REF#refs/tags/}"
-        fi
-        echo "version=${VERSION}" >> $GITHUB_OUTPUT
-    
     - name: Generate Release Notes
       id: notes
       run: |
+        VERSION="${{ needs.get-version.outputs.version }}"
         cat << EOF > release_notes.md
-        ## MCP Manager ${{ steps.version.outputs.version }}
+        ## MCP Manager ${VERSION}
         
         ### Deployment Options
         
         #### Docker (Server-Hosted)
         \`\`\`bash
-        docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
-        docker run -p 8080:8080 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
+        docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.get-version.outputs.version_tag }}
+        docker run -p 8080:8080 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.get-version.outputs.version_tag }}
         \`\`\`
         
         #### Desktop App (Windows)
@@ -218,8 +241,8 @@ jobs:
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
-        tag_name: ${{ steps.version.outputs.version }}
-        name: Release ${{ steps.version.outputs.version }}
+        tag_name: ${{ needs.get-version.outputs.version }}
+        name: Release ${{ needs.get-version.outputs.version }}
         body_path: release_notes.md
         draft: false
         prerelease: false
