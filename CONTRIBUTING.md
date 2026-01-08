@@ -89,7 +89,65 @@ For feature requests, use the [Feature Request template](.github/ISSUE_TEMPLATE/
    git push origin feature/your-feature-name
    ```
 
-6. **Open a Pull Request** on GitHub using the [PR template](.github/pull_request_template.md)
+5. **Open a Pull Request** on GitHub using the [PR template](.github/pull_request_template.md)
+
+## 🏷️ Versioning (Automated!)
+
+**Zero Developer Overhead - Fully Automated!**
+
+We use [Semantic Versioning](https://semver.org/) with **100% automated version management**. You don't touch `version.json` - our CI does it!
+
+### How It Works
+
+1. **Title your PR with conventional commits**
+2. **Workflow automatically**: Detects bump type → Updates version.json → Commits to your PR → Validates
+3. **On merge to main**: Creates tag → Builds release → Publishes artifacts
+
+### PR Title Format
+
+```
+<type>[scope][!]: <description>
+
+Examples:
+feat: add server discovery         → 0.1.0 → 0.2.0 (MINOR)
+fix: resolve routing bug            → 0.1.0 → 0.1.1 (PATCH)
+feat!: redesign API                 → 0.1.0 → 1.0.0 (MAJOR)
+```
+
+### Version Bump Rules
+
+| PR Title Pattern | Bump | Example |
+|-----------------|------|---------|
+| `feat!:` or `BREAKING` | **MAJOR** | 0.1.0 → 1.0.0 |
+| `feat:` or label `feature` | **MINOR** | 0.1.0 → 0.2.0 |
+| `fix:`, `chore:`, `docs:`, etc. | **PATCH** | 0.1.0 → 0.1.1 |
+
+### Commit Types
+
+- `feat`: New feature (minor)
+- `fix`: Bug fix (patch)
+- `docs`: Documentation (patch)
+- `style`, `refactor`, `perf`, `test`, `chore`, `ci`: Other (patch)
+
+Add `!` for breaking: `feat!:` or `fix!:` → **MAJOR** bump
+
+### What You DON'T Do
+
+❌ Edit `version.json` manually  
+❌ Create tags  
+❌ Calculate versions  
+❌ Worry about conflicts  
+
+### What Happens Automatically
+
+✅ Version detection from PR title/labels  
+✅ `version.json` auto-update in your PR  
+✅ Version validation  
+✅ Helpful PR comments  
+✅ Tag creation on merge  
+✅ Release builds  
+
+See the automated comment on your PR for version details!
 
 ## 🏗️ Project Structure
 

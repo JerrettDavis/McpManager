@@ -29,6 +29,15 @@ jobs:
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
     
+    - name: Install nbgv tool
+      run: dotnet tool install -g nbgv
+    
+    - name: Display version
+      run: |
+        VERSION=$(nbgv get-version -v Version)
+        echo "Building version: $VERSION"
+        echo "NBGV_Version=$VERSION" >> $GITHUB_ENV
+    
     - name: Restore dependencies
       run: dotnet restore
     
