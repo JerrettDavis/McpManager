@@ -59,6 +59,31 @@ McpManager/
 
 ### Installation Options
 
+#### ⚠️ Windows SmartScreen Warning
+
+If you're on Windows, you may see a security warning when running the desktop app for the first time:
+
+> "Windows protected your PC - Microsoft Defender SmartScreen prevented an unrecognized app from starting"
+
+**This is normal!** Code signing certificates cost $300-500/year. As an open source project, we provide full source code transparency instead.
+
+**To run the app safely:**
+1. Click "More info"
+2. Click "Run anyway"
+3. Verify the SHA256 hash matches the release notes (optional)
+
+**Why you can trust it:**
+- ✅ **100% open source** - audit the code yourself
+- ✅ **Built by GitHub Actions** - reproducible builds
+- ✅ **SHA256 verified** - ensure download integrity
+- ✅ **No telemetry or tracking** - everything stays local
+
+📖 **Full details**: See [SmartScreen Warning Guide](docs/SMARTSCREEN_WARNING.md)
+
+🔐 **Code signing status**: We've applied for free signing via SignPath.io (2-4 weeks)
+
+---
+
 #### Option 1: Desktop App (Recommended)
 
 The desktop app runs as a standalone application with no browser required!
