@@ -1,3 +1,6 @@
+@using McpManager.Application.Services
+@inject IVersionService VersionService
+
 <div class="nav-container">
     <div class="brand">
         <div class="brand-icon">🚀</div>
@@ -37,7 +40,7 @@
     <div class="nav-footer">
         <div class="version-info">
             <span class="version-label">Version</span>
-            <span class="version-number">1.0.0</span>
+            <span class="version-number">@VersionService.GetVersion()</span>
         </div>
     </div>
 </div>

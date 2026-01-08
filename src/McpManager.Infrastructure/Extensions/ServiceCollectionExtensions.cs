@@ -26,6 +26,9 @@ public static class ServiceCollectionExtensions
         string appName = "McpManager",
         string? dbPath = null)
     {
+        // Version service (singleton - computed once)
+        services.AddSingleton<IVersionService, VersionService>();
+        
         // Configure database
         var databasePath = dbPath ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
