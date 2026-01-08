@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
 using Photino.Blazor;
 using McpManager.Infrastructure.Extensions;
 
@@ -30,7 +31,10 @@ class Program
         app.MainWindow
             .SetTitle("MCP Manager")
             .SetSize(1400, 900)
-            .SetResizable(true);
+            .SetResizable(true)
+            .SetUseOsDefaultLocation(false)
+            .SetLeft(100)
+            .SetTop(100);
 
         AppDomain.CurrentDomain.UnhandledException += (sender, error) =>
         {
