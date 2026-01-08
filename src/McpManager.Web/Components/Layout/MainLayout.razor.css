@@ -64,7 +64,18 @@ main {
     }
 }
 
+/* Mobile/Small screen layout - horizontal topbar */
 @media (max-width: 640.98px) {
+    .sidebar {
+        width: 100%;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+        position: sticky;
+        top: 0;
+        z-index: 20;
+    }
+
     .top-row {
         padding: 1rem 1.5rem;
     }
@@ -78,6 +89,7 @@ main {
     }
 }
 
+/* Desktop layout - vertical sidebar */
 @media (min-width: 641px) {
     .page {
         flex-direction: row;
