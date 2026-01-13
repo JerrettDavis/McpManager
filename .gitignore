@@ -58,3 +58,11 @@ McpManager.sln.DotSettings.user
 *.db
 *.db-shm
 *.db-wal
+
+# DocFX generated files
+_site/
+docs/api/
+docs/obj/
+
+# Temporary directories
+tmpclaude-*/

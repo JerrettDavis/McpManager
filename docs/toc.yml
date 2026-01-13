@@ -1,0 +1,72 @@
+- name: Home
+  href: index.md
+- name: Getting Started
+  href: getting-started.md
+- name: User Guide
+  items:
+    - name: Bulk Agent Management
+      href: BULK_AGENT_MANAGEMENT.md
+    - name: Debug Tools
+      href: DEBUG_CLEANUP_TOOLS.md
+    - name: Database Browser
+      href: DATABASE_BROWSER.md
+- name: Configuration
+  items:
+    - name: Configuration Guide
+      href: CONFIGURATION.md
+    - name: Claude Code Configuration
+      href: CLAUDE_CODE_CONFIGURATION.md
+    - name: Desktop Background Workers
+      href: DESKTOP_BACKGROUND_WORKERS.md
+- name: Development
+  items:
+    - name: Architecture
+      href: ARCHITECTURE.md
+    - name: API Documentation
+      href: API.md
+    - name: Style Guide
+      href: STYLE_GUIDE.md
+    - name: Implementation Summary
+      href: IMPLEMENTATION_SUMMARY.md
+- name: Troubleshooting
+  items:
+    - name: Debugging Sync Issues
+      href: DEBUGGING_SYNC_ISSUES.md
+    - name: Server ID Matching Fix
+      href: SERVER_ID_MATCHING_FIX.md
+    - name: Installation Sync Fix
+      href: INSTALLATION_SYNC_FIX.md
+    - name: Cleanup Duplicates
+      href: CLEANUP_DUPLICATES.md
+- name: Deployment
+  items:
+    - name: Desktop Deployment
+      href: DESKTOP_DEPLOYMENT.md
+    - name: SmartScreen Warning
+      href: SMARTSCREEN_WARNING.md
+    - name: Code Signing
+      href: CODE_SIGNING.md
+    - name: Release Process
+      href: RELEASE.md
+    - name: CI/CD Summary
+      href: CI_CD_SUMMARY.md
+- name: Version History
+  items:
+    - name: Versioning Guide
+      href: VERSIONING.md
+    - name: Versioning Implementation
+      href: VERSIONING_IMPLEMENTATION.md
+    - name: Versioning Quick Reference
+      href: VERSIONING_QUICK_REF.md
+    - name: Styling Update v0.1.5
+      href: STYLING_UPDATE_V0.1.5.md
+    - name: Version Display
+      href: VERSION_DISPLAY.md
+    - name: Release Workflow Fix
+      href: RELEASE_WORKFLOW_FIX.md
+    - name: Download Stats
+      href: DOWNLOAD_STATS.md
+    - name: Persistence
+      href: PERSISTENCE.md
+- name: API Reference
+  href: api/

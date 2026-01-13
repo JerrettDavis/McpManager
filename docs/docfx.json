@@ -1,0 +1,73 @@
+{
+  "metadata": [
+    {
+      "src": [
+        {
+          "src": "../src",
+          "files": [
+            "McpManager.Core/**/*.csproj",
+            "McpManager.Application/**/*.csproj",
+            "McpManager.Infrastructure/**/*.csproj"
+          ]
+        }
+      ],
+      "dest": "api",
+      "includePrivateMembers": false,
+      "disableGitFeatures": false,
+      "disableDefaultFilter": false,
+      "noRestore": false,
+      "namespaceLayout": "nested",
+      "memberLayout": "samePage",
+      "EnumSortOrder": "alphabetic"
+    }
+  ],
+  "build": {
+    "content": [
+      {
+        "files": [
+          "**/*.{md,yml}"
+        ],
+        "exclude": [
+          "_site/**",
+          "obj/**"
+        ]
+      }
+    ],
+    "resource": [
+      {
+        "files": [
+          "**/*.{png,jpg,jpeg,gif,svg}"
+        ],
+        "exclude": [
+          "_site/**",
+          "obj/**"
+        ]
+      }
+    ],
+    "output": "../_site",
+    "template": [
+      "default",
+      "modern"
+    ],
+    "globalMetadata": {
+      "_appName": "MCP Manager",
+      "_appTitle": "MCP Manager Documentation",
+      "_appLogoPath": "images/logo.svg",
+      "_enableSearch": true,
+      "_enableNewTab": true,
+      "_disableContribution": false,
+      "_gitContribute": {
+        "repo": "https://github.com/JerrettDavis/McpManager",
+        "branch": "main"
+      }
+    },
+    "fileMetadata": {},
+    "markdownEngineProperties": {
+      "markdigExtensions": [
+        "advanced"
+      ]
+    },
+    "keepFileLink": false,
+    "disableGitFeatures": false
+  }
+}
