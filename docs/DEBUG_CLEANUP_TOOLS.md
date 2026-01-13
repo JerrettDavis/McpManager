@@ -6,75 +6,36 @@ The Debug page (`/debug`) now includes automated cleanup tools to help resolve c
 
 ### 1. Detect Duplicates
 
-**Purpose**: Find servers with the same name but different IDs.
+Finds servers with the same name but different IDs. Groups servers by name and shows which are tracked in installation records.
 
-**What it does**:
-- Scans all installed servers
-- Groups them by name (case-insensitive)
-- Identifies groups with more than one server
-- Shows which servers are tracked in installation records
+Use after upgrades or when duplicate servers appear in the UI.
 
-**When to use**:
-- After upgrading from an older version
-- When you see duplicate servers in the UI
-- Before running the "Remove Duplicates" tool
-
-**Example output**:
+Example output:
 ```
 Found 2 duplicate group(s):
 - Github: 2 servers
   - mcp_12js8Hu2bw (Not Tracked)
   - github (In Records)
-- Filesystem: 2 servers
-  - filesystem (In Records)
-  - mcp_abc123 (Not Tracked)
 ```
 
 ### 2. Remove Duplicates
 
-**Purpose**: Automatically remove duplicate servers, keeping only the correct one.
+Removes duplicate servers automatically. Keeps tracked servers, removes untracked ones. If all tracked or untracked, keeps the first and removes the rest.
 
-**What it does**:
-1. Runs duplicate detection first
-2. For each duplicate group:
-   - If some servers are in installation records and others aren't: Keeps tracked servers, removes untracked ones
-   - If all servers are tracked or none are tracked: Keeps the first one, removes the rest
-3. Uninstalls the duplicate servers
-4. Shows a summary of what was removed
+Use after confirming duplicates exist or when duplicate servers appear.
 
-**When to use**:
-- After confirming duplicates exist with "Detect Duplicates"
-- When you have duplicate servers showing in the Installed Servers page
-- After upgrading from v0.1.2 or earlier
-
-**Safety**: This operation is safe because:
-- It only removes servers that aren't tracked in installation records
-- It keeps servers that are actively configured for agents
-- If all are tracked, it keeps one and removes the others
-
-**Example output**:
+Example output:
 ```
 Cleanup complete: Kept 2 server(s), removed 2 duplicate(s)
 ```
 
 ### 3. Sync Installation Records
 
-**Purpose**: Create missing installation records for servers that are configured in agent config files.
+Creates missing installation records for servers configured in agent config files. Matches by ID, falls back to name matching.
 
-**What it does**:
-1. Reads each agent's `ConfiguredServerIds` from their config file
-2. For each configured server ID:
-   - Tries to find the server by exact ID match
-   - Falls back to name-based matching if ID doesn't match
-3. Creates installation records for servers that don't have them
-4. Shows how many records were created
+Use when servers show "Add to Agent" but are already configured, or when Debug page shows untracked servers.
 
-**When to use**:
-- When servers show "Add to Agent" but are already in the config file
-- After the background worker has installed servers but records are missing
-- When the Debug page shows "⚠ X server(s) not tracked"
-
-**Example output**:
+Example output:
 ```
 Created 3 missing installation record(s)
 ```

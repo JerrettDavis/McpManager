@@ -15,81 +15,57 @@ From any of these locations:
 - **Browse Servers** page → Install a server → Click its name
 - Direct URL: `/servers/{serverId}`
 
-### 2. View the "Manage Agents" Section
+### 2. View the Manage Agents Section
 
-The server details page now shows all detected agents with:
-- **Checkbox**: Select/deselect the agent
-- **Agent Name**: The agent's display name and type
-- **Current Status**:
-  - `Not Added` - Server not configured for this agent
-  - `✓ Enabled` - Server is configured and enabled
-  - `⏸ Disabled` - Server is configured but disabled
-- **New Status**: Shows what will happen when you apply changes
-  - `→ Enabled` - Server will be added/enabled
-  - `→ Not Added` - Server will be removed
-  - `No change` - No action will be taken
-- **Configuration**: Shows if agent's config matches the global config
-- **Actions**: Link to configure the server for that specific agent
+The server details page shows all detected agents with:
+- Checkbox for selection
+- Agent name and type
+- Current status: Not Added, Enabled, or Disabled
+- New status showing pending changes
+- Configuration match indicator
+- Action links
 
 ### 3. Select Agents
 
-**Individual Selection**:
-- Click checkboxes next to individual agents to add/remove them
+**Individual**: Click checkboxes next to agents
 
-**Bulk Selection**:
-- Click **☑ Select All** to select all agents
-- Click **☐ Deselect All** to deselect all agents
-- Click the checkbox in the table header to toggle all agents
+**Bulk**: Use Select All, Deselect All, or the table header checkbox
 
-**Visual Feedback**:
-- Rows with pending changes are highlighted in yellow
-- The "New Status" column shows what will happen
-- Apply Changes and Cancel buttons appear when changes are pending
+**Visual Feedback**: Rows with pending changes highlighted in yellow
 
 ### 4. Apply Changes
 
-1. Click **💾 Apply Changes** to apply all selected changes
-2. The system will:
-   - Add the server to newly selected agents
-   - Enable the server for agents where it was disabled
-   - Remove the server from deselected agents
-3. A success message shows what was changed
+Click Apply Changes to:
+- Add server to newly selected agents
+- Enable server for disabled agents
+- Remove server from deselected agents
 
 ### 5. Cancel Changes
 
-Click **✖️ Cancel** to revert all selection changes without applying them.
+Click Cancel to revert selection changes.
 
 ## Example Workflows
 
 ### Add Server to Multiple Agents
 
-**Scenario**: You want to add the "github" server to all your agents
-
-1. Go to `/servers/github`
-2. Click **☑ Select All**
-3. Review the "New Status" column - should show `→ Enabled` for all agents
-4. Click **💾 Apply Changes**
-5. Success message: "Success: 3 agent(s) added/enabled"
+1. Navigate to server details page
+2. Click Select All
+3. Review New Status column
+4. Click Apply Changes
 
 ### Remove Server from Specific Agents
 
-**Scenario**: You want to remove "filesystem" from 2 out of 3 agents
+1. Navigate to server details page
+2. Uncheck agents to remove
+3. Review pending changes
+4. Click Apply Changes
 
-1. Go to `/servers/filesystem`
-2. Currently all 3 agents are selected (have the server enabled)
-3. Uncheck the 2 agents you want to remove
-4. Review: Those 2 rows show `→ Not Added` in "New Status"
-5. Click **💾 Apply Changes**
-6. Success message: "Success: 2 agent(s) removed"
+### Enable Server for Specific Agents Only
 
-### Enable a Server Only for Development Agents
-
-**Scenario**: You want to enable "memory" server only for dev agents
-
-1. Go to `/servers/memory`
-2. Click **☐ Deselect All** to start fresh
-3. Check only the development agent(s)
-4. Click **💾 Apply Changes**
+1. Navigate to server details page
+2. Click Deselect All
+3. Check desired agents
+4. Click Apply Changes
 
 ## Status Indicators
 

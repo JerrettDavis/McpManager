@@ -9,24 +9,22 @@
 [![Release](https://img.shields.io/github/v/release/JerrettDavis/McpManager)](https://github.com/JerrettDavis/McpManager/releases)
 [![Docker](https://img.shields.io/badge/docker-ghcr.io-blue?logo=docker)](https://github.com/JerrettDavis/McpManager/pkgs/container/mcpmanager)
 
-> **Manage your Model Context Protocol servers across all AI agents in one place!**
+MCP Manager is a dashboard for discovering, installing, and managing Model Context Protocol servers across multiple AI agents.
 
-MCP Manager is a modern, extensible dashboard application for discovering, installing, and managing MCP (Model Context Protocol) servers across multiple AI agents like Claude Desktop, GitHub Copilot, and more.
+## Features
 
-## ✨ Features
+- Browse and search MCP servers from registries
+- One-click server installation and management
+- Multi-agent support (Claude Desktop, GitHub Copilot, etc.)
+- Unified dashboard for all servers and agents
+- Bulk agent management with checkbox selection
+- Plugin-based architecture for extensibility
+- Docker support for containerized deployment
+- Comprehensive unit test coverage
 
-- 🔍 **Browse & Search** - Discover MCP servers from registries
-- 📦 **Install & Manage** - One-click installation and management
-- 🤖 **Multi-Agent Support** - Works with Claude, Copilot, and more
-- 🎛️ **Unified Dashboard** - Manage all servers and agents from one place
-- ⚡ **Simple UI** - Intuitive checkboxes, buttons, and actions
-- 🔧 **Extensible** - Plugin-based architecture for new agents
-- 🐳 **Containerizable** - Docker support for flexible deployment
-- ✅ **Well-Tested** - Comprehensive unit test coverage
+## Architecture
 
-## 🏗️ Architecture
-
-MCP Manager follows **SOLID principles** and **Clean Architecture**:
+MCP Manager follows Clean Architecture with clear separation of concerns:
 
 ### Project Structure
 
@@ -50,7 +48,7 @@ McpManager/
 - **Open/Closed**: Extensible via `IAgentConnector` interface
 - **DRY (Don't Repeat Yourself)**: Shared logic in base classes and services
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -59,28 +57,21 @@ McpManager/
 
 ### Installation Options
 
-#### ⚠️ Windows SmartScreen Warning
+#### Windows SmartScreen Warning
 
-If you're on Windows, you may see a security warning when running the desktop app for the first time:
+Windows may show a security warning when running the desktop app because it's not code-signed. Code signing certificates cost $300-500/year, which isn't practical for this open source project.
 
-> "Windows protected your PC - Microsoft Defender SmartScreen prevented an unrecognized app from starting"
-
-**This is normal!** Code signing certificates cost $300-500/year. As an open source project, we provide full source code transparency instead.
-
-**To run the app safely:**
+**To run the app:**
 1. Click "More info"
 2. Click "Run anyway"
-3. Verify the SHA256 hash matches the release notes (optional)
 
-**Why you can trust it:**
-- ✅ **100% open source** - audit the code yourself
-- ✅ **Built by GitHub Actions** - reproducible builds
-- ✅ **SHA256 verified** - ensure download integrity
-- ✅ **No telemetry or tracking** - everything stays local
+**Why it's safe:**
+- 100% open source - audit the code yourself
+- Built by GitHub Actions - reproducible builds
+- SHA256 hashes in release notes
+- No telemetry or network calls
 
-📖 **Full details**: See [SmartScreen Warning Guide](docs/SMARTSCREEN_WARNING.md)
-
-🔐 **Code signing status**: We've applied for free signing via SignPath.io (2-4 weeks)
+See [SmartScreen Warning Guide](docs/SMARTSCREEN_WARNING.md) for details.
 
 ---
 
@@ -131,89 +122,44 @@ docker run -p 8080:8080 ghcr.io/jerrettdavis/mcpmanager:latest
 #### Option 4: Build from Source
 
 ```bash
-# Clone the repository
 git clone https://github.com/JerrettDavis/McpManager.git
 cd McpManager
-
-# Restore dependencies
 dotnet restore
-
-# Run the application
 dotnet run --project src/McpManager.Web
-
 # Navigate to https://localhost:5001
 ```
 
-### Run with Docker
-
-```bash
-# Clone the repository
-git clone https://github.com/JerrettDavis/McpManager.git
-cd McpManager
-
-# Restore dependencies
-dotnet restore
-
-# Run the application
-dotnet run --project src/McpManager.Web
-
-# Navigate to https://localhost:5001
-```
-
-## 📖 Usage
+## Usage
 
 ### Dashboard
 
-The main dashboard provides an overview of:
-- Number of installed MCP servers
-- Detected AI agents on your system
-- Active server installations across agents
+The main dashboard shows installed servers, detected agents, and active installations.
 
 ### Browse Servers
 
-1. Navigate to **Browse Servers**
-2. Search for servers by name, description, or tags
-3. Click **Install** on any server you want to add
+Navigate to Browse Servers to search and install MCP servers from registries.
 
 ### Manage Agents
 
-1. Navigate to **Agents**
-2. Select an agent to view its configured servers
-3. Use checkboxes to **Enable/Disable** servers
-4. Click **Remove** to uninstall a server from an agent
-5. Click **Add to Agent** to configure a new server
+1. Select an agent to view configured servers
+2. Use checkboxes to enable/disable servers
+3. Use bulk operations to add/remove servers from multiple agents
+4. Click Remove to uninstall a server from an agent
 
-### Agent-Specific Configuration
-
-Each agent page shows:
-- All installed MCP servers
-- Current enable/disable status
-- Quick actions for configuration
-
-Simply toggle checkboxes to enable or disable servers, or click remove buttons to uninstall.
-
-## 🧪 Testing
+## Testing
 
 ```bash
-# Run all tests
 dotnet test
-
-# Run with coverage
-dotnet test /p:CollectCoverage=true
+dotnet test /p:CollectCoverage=true  # with coverage
 ```
 
-Current test coverage: **22 passing tests** covering core services.
+## Supported Agents
 
-## 🔌 Supported Agents
+- Claude Desktop
+- GitHub Copilot (VS Code)
+- Custom agents via `IAgentConnector` interface
 
-Currently supported AI agents:
-
-- ✅ **Claude Desktop** - Full support for configuration management
-- ✅ **GitHub Copilot** - VS Code integration support
-- 🔜 **OpenAI Codex** - Coming soon
-- 🔜 **Custom Agents** - Extensible via `IAgentConnector` interface
-
-## 🛠️ Development
+## Development
 
 ### Adding a New Agent Connector
 
@@ -249,7 +195,7 @@ public class NpmRegistry : IServerRegistry
 }
 ```
 
-## 📦 Building for Production
+## Building for Production
 
 ### Build Executable
 
@@ -272,27 +218,15 @@ docker tag mcp-manager:latest your-registry/mcp-manager:latest
 docker push your-registry/mcp-manager:latest
 ```
 
-## 🤝 Contributing
+## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions welcome. Fork the repository, create a feature branch, and submit a pull request.
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+## License
 
-## 📄 License
+MIT License - see [LICENSE](LICENSE) file.
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+## Acknowledgments
 
-## 🙏 Acknowledgments
-
-- Built with [Blazor](https://dotnet.microsoft.com/apps/aspnet/web-apps/blazor)
-- Inspired by the [Model Context Protocol](https://modelcontextprotocol.io/)
-- UI powered by [Bootstrap 5](https://getbootstrap.com/)
-
----
-
-**Made with ❤️ for the AI development community**
+Built with Blazor and Bootstrap. Implements the [Model Context Protocol](https://modelcontextprotocol.io/).
 

@@ -17,294 +17,159 @@ When you download and run `McpManager.Desktop.exe`, Windows may display:
 └─────────────────────────────────────────┘
 ```
 
-## ⚠️ This Is Normal - Here's Why
+## Why This Happens
 
-### The Technical Reason
+Windows SmartScreen shows this warning because the executable isn't digitally signed with a code signing certificate.
 
-Windows SmartScreen shows this warning because the executable is **not digitally signed** with a trusted code signing certificate.
+Code signing certificates cost $300-500 per year. MCP Manager is an open source project with no funding, so we provide source code transparency instead.
 
-**Why isn't it signed?**
-- Code signing certificates cost **$300-500 per year**
-- MCP Manager is an **open source project** with no funding
-- We provide the source code for full transparency instead
+### Verifying Safety
 
-### Is It Safe?
+**Source Code**
+- View at https://github.com/JerrettDavis/McpManager
+- Audit the code yourself
+- Full git history available
 
-**YES!** Here's how you can verify:
+**Build Process**
+- Built by GitHub Actions (reproducible builds)
+- No manual tampering
+- Review `.github/workflows/release.yml`
 
-#### 1. Source Code is Public
-- **View the code**: https://github.com/JerrettDavis/McpManager
-- **Audit yourself** or have security experts review it
-- **See every commit**: Full git history available
-- **No secrets**: Everything is transparent
-
-#### 2. Built by GitHub Actions
-- **Reproducible builds**: Anyone can rebuild from source
-- **No manual tampering**: Automated build process
-- **Build logs public**: See exactly how it was built
-- **Workflow auditable**: Review `.github/workflows/release.yml`
-
-#### 3. Verify Download Integrity
-Every release includes SHA256 checksums. Verify your download:
-
-**PowerShell (Windows):**
+**Download Integrity**
+Verify SHA256 hash:
 ```powershell
 Get-FileHash -Path McpManager.Desktop.exe -Algorithm SHA256
 ```
+Compare with release notes.
 
-**Compare with release notes** - the hash should match exactly.
+## Running the App
 
-#### 4. Community Trust
-- **GitHub stars**: See how many users trust the project
-- **Open issues**: Active community feedback
-- **Commit history**: Regular updates and fixes
-- **Contributors**: Multiple people reviewing code
+1. Click "More info" when the warning appears
+2. Click "Run anyway"
 
-## How to Run the App
+The warning only appears the first time you run each version.
 
-### Step 1: Click "More info"
+## Code Signing for Open Source
 
-```
-┌─────────────────────────────────────────┐
-│ Windows protected your PC              │
-│                                         │
-│ Microsoft Defender SmartScreen          │
-│ prevented an unrecognized app from      │
-│ starting. Running this app might put    │
-│ your PC at risk.                        │
-│                                         │
-│ App: McpManager.Desktop.exe            │
-│ Publisher: Unknown publisher            │
-│                                         │
-│ [Run anyway]  [Don't run]              │ ← Click here first
-└─────────────────────────────────────────┘
-```
+Code signing certificates require:
+- $300-500/year cost
+- Business entity and validation process
+- 2-4 weeks to obtain
+- USB token for security
 
-### Step 2: Click "Run anyway"
+Free alternatives:
+- SignPath.io (free for open source, requires approval)
+- Self-signed certificates (still trigger warnings)
+- Building reputation (takes months of downloads)
 
-The app will start normally. You'll only see this warning **the first time** you run each version.
+Until we get code signing, we rely on source code transparency, SHA256 verification, and reproducible builds.
 
-## Why This Happens to Open Source Software
+## Alternatives
 
-### The Code Signing Dilemma
-
-**Paid Certificates:**
-- **Cost**: $300-500/year minimum
-- **Requirements**: Business entity, validation process
-- **Timeline**: 2-4 weeks to get certificate
-- **Hardware**: Requires USB token for security
-
-**Free Alternatives:**
-- **SignPath.io**: Free for open source, but requires approval
-- **Self-signed**: Doesn't help - still shows warnings
-- **Wait for reputation**: Takes months of downloads
-
-### We're Working On It!
-
-**Current status**: Applied for **SignPath.io** free code signing for open source projects
-
-**Timeline:**
-- ⏳ Application submitted
-- ⏳ Waiting for approval (1-2 weeks)
-- ⏳ Integration with CI/CD
-- ✅ Future releases will be signed
-
-Until then, we rely on:
-1. **Source code transparency** (audit the code yourself)
-2. **SHA256 verification** (ensure integrity)
-3. **Community trust** (GitHub stars, issues, reviews)
-4. **Reproducible builds** (rebuild from source)
-
-## Alternatives to Avoid the Warning
-
-### Option 1: Run from Source
-
-Build and run directly from source code:
-
+**Run from Source**
 ```bash
-# Clone repository
 git clone https://github.com/JerrettDavis/McpManager.git
 cd McpManager
-
-# Restore and run
 dotnet restore
 dotnet run --project src/McpManager.Desktop
 ```
+No warnings because .NET SDK executables are trusted.
 
-**No warnings** because .NET SDK executables are already trusted.
-
-### Option 2: Use the Server Version
-
-Run the web server version instead:
-
+**Use Server Version**
 ```bash
-# No executable warnings - runs in browser
 dotnet run --project src/McpManager.Web
-
 # Open browser to http://localhost:5000
 ```
+Requires .NET SDK installed.
 
-**Trade-off**: Requires .NET SDK installed.
+## Full Verification
 
-### Option 3: Wait for Signed Releases
+**Download Source**
+Only download from GitHub Releases: https://github.com/JerrettDavis/McpManager/releases
 
-Once SignPath.io approves our application:
-- ✅ All releases will be digitally signed
-- ✅ No more SmartScreen warnings
-- ✅ Same $0 cost (free for open source)
-
-**ETA**: 2-4 weeks from now
-
-## For the Paranoid: Full Verification
-
-### 1. Verify the Download Source
-
-Only download from official sources:
-- ✅ **GitHub Releases**: https://github.com/JerrettDavis/McpManager/releases
-- ❌ **Anywhere else**: Don't trust it
-
-### 2. Check File Hash
-
+**File Hash**
 ```powershell
-# Windows PowerShell
 $hash = Get-FileHash -Path McpManager.Desktop.exe -Algorithm SHA256
 Write-Host "SHA256: $($hash.Hash)"
-
-# Compare with release notes
 ```
+Compare with release notes.
 
-### 3. Scan with Antivirus
-
+**Antivirus Scan**
 ```powershell
-# Windows Defender
 Start-MpScan -ScanPath "C:\path\to\McpManager.Desktop.exe"
 ```
+Or upload to VirusTotal. Note: Some antivirus flag unsigned executables as "potentially unwanted".
 
-Or upload to:
-- **VirusTotal**: https://www.virustotal.com (may flag as unsigned)
-- **Hybrid Analysis**: https://www.hybrid-analysis.com
-
-**Note**: Some antivirus may flag any unsigned executable as "potentially unwanted" - this is normal.
-
-### 4. Review the Source Code
-
-**Key files to audit:**
+**Source Code Audit**
+Key files:
 - `src/McpManager.Desktop/Program.cs` - Entry point
-- `src/McpManager.*/` - All application code
 - `.github/workflows/release.yml` - Build process
 
-**Look for:**
-- ❌ Network requests to unknown servers
-- ❌ File system access outside app directory
-- ❌ Registry modifications
-- ❌ Process injection
-- ✅ Only local SQLite database operations
-- ✅ Only user-initiated actions
+The app only accesses local SQLite database and performs user-initiated actions.
 
-### 5. Run in Sandbox (Advanced)
-
-Use Windows Sandbox to test:
-
+**Windows Sandbox**
 ```powershell
-# Enable Windows Sandbox (one-time)
 Enable-WindowsOptionalFeature -Online -FeatureName Containers-DisposableClientVM
-
-# Run Sandbox and test app
-# Any malware would be contained
 ```
+Run the app in Windows Sandbox for isolated testing.
 
-## What We Do NOT Do
+## Privacy and Data
 
-To build trust, here's what MCP Manager **does NOT** do:
+MCP Manager does NOT:
+- Track usage or collect telemetry
+- Automatically update (you control updates)
+- Make network calls (except registry queries you initiate)
+- Use analytics or third-party services
+- Display ads or monetize
 
-❌ **No telemetry** - We don't track your usage
-❌ **No auto-updates** - You control updates
-❌ **No network calls** (except registry queries you initiate)
-❌ **No data collection** - Everything stays local
-❌ **No analytics** - No third-party services
-❌ **No ads or monetization** - 100% free and open source
+Data storage:
+- Local SQLite database in your user folder
+- Self-contained executable
+- No background services
+- No system modifications
 
-✅ **Data stays local** - SQLite database in your user folder
-✅ **No external dependencies** - Self-contained executable
-✅ **No background services** - Runs only when you run it
-✅ **No system modifications** - Portable application
+## Open Source vs Commercial
 
-## Comparison: Open Source vs Commercial
-
-| Aspect | MCP Manager (OSS) | Commercial Software |
-|--------|-------------------|---------------------|
-| **Source Code** | ✅ Public & Auditable | ❌ Closed & Hidden |
-| **Build Process** | ✅ Open & Reproducible | ❌ Private |
-| **Code Signing** | ⏳ Applied (free) | ✅ Yes ($500/year) |
-| **SmartScreen** | ⚠️ Warning (for now) | ✅ Trusted |
-| **Cost** | ✅ Free Forever | 💰 $50-500/year |
-| **Privacy** | ✅ No tracking | ⚠️ Often tracks |
-| **Trust Model** | Transparency | Certificate Authority |
+| Aspect | MCP Manager | Commercial Software |
+|--------|-------------|---------------------|
+| Source Code | Public & auditable | Closed |
+| Build Process | Open & reproducible | Private |
+| Code Signing | Pending approval | Yes ($500/year) |
+| SmartScreen | Warning | Trusted |
+| Cost | Free | $50-500/year |
+| Privacy | No tracking | Often tracks |
+| Trust Model | Transparency | Certificate |
 
 ## FAQ
 
-### Q: Why not just buy a code signing certificate?
+**Why not buy a code signing certificate?**
+Cost is $300-500/year. As an open source project with no funding, we provide source code transparency instead.
 
-**A**: It costs $300-500/year, and we're an open source project with no funding or revenue. We provide source code transparency instead.
+**When will releases be signed?**
+Applied for SignPath.io free code signing. Timeline varies based on approval.
 
-### Q: When will releases be signed?
+**Is this warning dangerous?**
+No. It's Windows being cautious about unsigned software. Verify the SHA256 hash for safety.
 
-**A**: We've applied for SignPath.io free code signing. Expected timeline: 2-4 weeks. Follow progress: https://github.com/JerrettDavis/McpManager/issues/[TBD]
+**Can I disable SmartScreen?**
+Not recommended. SmartScreen protects against actual malware. Click "Run anyway" for trusted apps.
 
-### Q: Is this warning dangerous?
+**What about macOS?**
+Not currently distributed for macOS. Apple Developer Account costs $99/year.
 
-**A**: No - it's just Windows being cautious about unsigned software. Verify the SHA256 hash and you're safe.
+**Will warnings go away?**
+SmartScreen builds reputation over time. After many downloads, warnings may reduce automatically.
 
-### Q: Can I disable SmartScreen?
+**Still concerned?**
+Build from source, run the web version, audit the code, or use Windows Sandbox.
 
-**A**: You can, but **we don't recommend it**. SmartScreen protects you from actual malware. Just click "Run anyway" for trusted apps like this one.
+## Security Issues
 
-### Q: What about macOS Gatekeeper?
+Found a vulnerability? Use GitHub Security Advisories instead of opening a public issue:
+https://github.com/JerrettDavis/McpManager/security/advisories
 
-**A**: We don't currently distribute for macOS, but the same principle applies - Apple Developer Account costs $99/year. If there's demand, we'll explore it.
+## Summary
 
-### Q: Will warnings go away over time?
+The SmartScreen warning appears because the app isn't code-signed ($500/year cost). The app is safe, open source, and auditable. Applied for free code signing through SignPath.io.
 
-**A**: Yes! SmartScreen builds reputation based on downloads. After hundreds of users run the app safely, warnings reduce automatically. But we're aiming for proper code signing first.
-
-### Q: Can I help fund a certificate?
-
-**A**: Not needed! We're using SignPath.io which provides free code signing for open source. If you want to support the project, contribute code or spread the word instead.
-
-### Q: I'm still concerned. What should I do?
-
-**Best approach**:
-1. Build from source yourself
-2. Run the web version instead
-3. Wait for signed releases
-4. Audit the source code
-5. Run in Windows Sandbox
-
-**Or** just skip it - there are other MCP management tools available.
-
-## Report Security Issues
-
-Found a security vulnerability? **Do NOT open a public issue.**
-
-**Instead**:
-1. Email: [Create private security advisory on GitHub]
-2. GitHub Security: https://github.com/JerrettDavis/McpManager/security/advisories
-3. Responsible disclosure: We'll credit you and patch quickly
-
-## Updates
-
-**Last updated**: 2026-01-08
-
-**Status**: 
-- ⏳ SignPath.io application submitted
-- ⏳ Waiting for approval
-- ✅ Source code fully auditable
-- ✅ SHA256 hashes in all releases
-
-**Track progress**: [Link to GitHub issue when created]
-
----
-
-**Bottom line**: The warning is just because we don't pay $500/year for a certificate. The app is safe, open source, and auditable. We're working on free code signing through SignPath.io.
-
-**Download**: https://github.com/JerrettDavis/McpManager/releases
+Download: https://github.com/JerrettDavis/McpManager/releases

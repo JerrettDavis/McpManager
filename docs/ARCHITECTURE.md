@@ -2,12 +2,7 @@
 
 ## Overview
 
-MCP Manager is built using **Clean Architecture** principles with a clear separation of concerns across multiple layers. The architecture is designed to be:
-
-- **Maintainable**: Easy to understand and modify
-- **Testable**: Each layer can be tested in isolation
-- **Extensible**: New features can be added without modifying existing code
-- **Flexible**: Can run as a desktop app, web server, or in containers
+MCP Manager uses Clean Architecture with separation of concerns across multiple layers. Each layer can be tested independently, and the design supports extension without modifying existing code. Runs as desktop app, web server, or container.
 
 ## Architecture Layers
 
@@ -182,19 +177,16 @@ builder.Services.AddSingleton<IServerRegistry, NpmRegistry>();
 ## Testing Strategy
 
 ### Unit Tests
-- Test services in isolation using mocks
-- Test domain logic without dependencies
-- Fast, reliable, comprehensive coverage
+- Services tested in isolation using mocks
+- Domain logic tested without dependencies
 
 ### Integration Tests
-- Test infrastructure adapters with real I/O
-- Test database/file operations
-- Verify external integrations
+- Infrastructure adapters tested with real I/O
+- Database and file operations verified
 
 ### E2E Tests
-- Test complete user workflows
-- Test UI interactions
-- Verify system behavior
+- Complete user workflows tested
+- UI interactions verified
 
 ## Deployment Scenarios
 
@@ -232,10 +224,10 @@ docker run -p 8080:8080 mcp-manager
 
 ## Performance
 
-- **In-Memory State**: Fast operations, stateless design
-- **Async/Await**: Non-blocking I/O operations
-- **Lazy Loading**: Load data only when needed
-- **Caching**: Consider caching registry results
+- In-memory state for fast operations
+- Async/await for non-blocking I/O
+- Lazy loading
+- Registry results could be cached
 
 ## Future Enhancements
 
