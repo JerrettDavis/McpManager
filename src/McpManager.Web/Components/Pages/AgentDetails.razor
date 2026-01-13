@@ -29,6 +29,14 @@
                 </nav>
                 <h1>🤖 @agent.Name</h1>
                 <p class="lead">Manage MCP servers for this agent</p>
+
+                @if (!string.IsNullOrEmpty(syncError))
+                {
+                    <div class="alert alert-warning alert-dismissible fade show">
+                        <strong>Sync Warning:</strong> @syncError
+                        <button type="button" class="btn-close" @onclick="() => syncError = null"></button>
+                    </div>
+                }
             </div>
         </div>
 
@@ -181,8 +189,11 @@
         await LoadDataAsync();
     }
 
+    private string? syncError = null;
+
     private async Task LoadDataAsync()
     {
+        syncError = null;
         agent = await AgentManager.GetAgentByIdAsync(AgentId);
         agentName = agent?.Name ?? "Unknown Agent";
 
@@ -191,7 +202,61 @@
             var servers = await ServerManager.GetInstalledServersAsync();
             installedServers = servers.ToList();
 
+            // Get installations from in-memory collection
             var installations = await InstallationManager.GetInstallationsByAgentIdAsync(AgentId);
+            var installationsList = installations.ToList();
+
+            // Sync with actual agent configuration - create installation records
+            // for servers that exist in the agent's config file but aren't tracked yet
+            foreach (var configServerId in agent.ConfiguredServerIds)
+            {
+                try
+                {
+                    // First, try to find by exact ID match
+                    var server = await ServerManager.GetServerByIdAsync(configServerId);
+                    var actualServerId = configServerId;
+
+                    if (server == null)
+                    {
+                        // Server ID from config doesn't exist - try to find by name
+                        // This handles the case where a server was installed with a different ID
+                        var matchByName = installedServers.FirstOrDefault(s =>
+                            s.Name.Equals(configServerId, StringComparison.OrdinalIgnoreCase));
+
+                        if (matchByName != null)
+                        {
+                            // Found a server with matching name but different ID - use the existing one
+                            actualServerId = matchByName.Id;
+                            server = matchByName;
+                            Console.WriteLine($"[AgentDetails] Config has '{configServerId}', matched to installed server '{actualServerId}' by name");
+                        }
+                        else
+                        {
+                            // No match found - DON'T create a duplicate
+                            // The background worker will handle auto-discovery
+                            Console.WriteLine($"[AgentDetails] Server '{configServerId}' not found, skipping (will be handled by background worker)");
+                            continue;
+                        }
+                    }
+
+                    // Check if installation relationship exists
+                    var existingInstallation = installationsList.FirstOrDefault(i => i.ServerId == actualServerId);
+                    if (existingInstallation == null)
+                    {
+                        // Create installation relationship using the actual server ID
+                        await InstallationManager.AddServerToAgentAsync(actualServerId, AgentId);
+                        Console.WriteLine($"[AgentDetails] Created installation: '{actualServerId}' -> '{AgentId}'");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    syncError = $"Error syncing server '{configServerId}': {ex.Message}";
+                    Console.WriteLine($"[AgentDetails] Sync error for {configServerId}: {ex}");
+                }
+            }
+
+            // Refresh installations after sync
+            installations = await InstallationManager.GetInstallationsByAgentIdAsync(AgentId);
             serverInstallations = installations.ToList();
         }
     }

@@ -1,0 +1,592 @@
+@page "/debug"
+@using McpManager.Core.Interfaces
+@using McpManager.Core.Models
+@inject IAgentManager AgentManager
+@inject IServerManager ServerManager
+@inject IInstallationManager InstallationManager
+@inject IEnumerable<IAgentConnector> Connectors
+
+<PageTitle>Debug Info</PageTitle>
+
+<div class="container-fluid">
+    <h1>🔍 Debug Information</h1>
+    <p class="lead">Diagnostic information to troubleshoot sync issues</p>
+
+    <div class="row">
+        <div class="col-12">
+            <button class="btn btn-primary mb-3" @onclick="RefreshAsync">🔄 Refresh</button>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(statusMessage))
+    {
+        <div class="alert alert-@statusMessageType alert-dismissible fade show">
+            @statusMessage
+            <button type="button" class="btn-close" @onclick="() => statusMessage = null"></button>
+        </div>
+    }
+
+    <div class="card mb-4">
+        <div class="card-header bg-warning text-dark">
+            <h5 class="mb-0">🛠️ Cleanup Tools</h5>
+        </div>
+        <div class="card-body">
+            <p class="text-muted">Use these tools to fix common sync issues and duplicates</p>
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h6 class="card-title">Detect Duplicates</h6>
+                            <p class="card-text small">Find servers with the same name but different IDs</p>
+                            <button class="btn btn-sm btn-outline-primary" @onclick="DetectDuplicatesAsync" disabled="@isProcessing">
+                                🔍 Scan for Duplicates
+                            </button>
+                            @if (duplicateGroups.Any())
+                            {
+                                <div class="mt-3">
+                                    <strong>Found @duplicateGroups.Count duplicate group(s):</strong>
+                                    <ul class="mt-2">
+                                        @foreach (var group in duplicateGroups)
+                                        {
+                                            <li>
+                                                <strong>@group.Key</strong>: @group.Value.Count servers
+                                                <ul class="small">
+                                                    @foreach (var server in group.Value)
+                                                    {
+                                                        <li>
+                                                            <code>@server.Id</code>
+                                                            @{
+                                                                var hasInstallations = installations.Any(i => i.ServerId == server.Id);
+                                                            }
+                                                            @if (hasInstallations)
+                                                            {
+                                                                <span class="badge bg-success">In Records</span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="badge bg-warning">Not Tracked</span>
+                                                            }
+                                                        </li>
+                                                    }
+                                                </ul>
+                                            </li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h6 class="card-title">Remove Duplicates</h6>
+                            <p class="card-text small">Remove duplicate servers, keeping only the one in installation records</p>
+                            <button class="btn btn-sm btn-danger" @onclick="RemoveDuplicatesAsync" disabled="@isProcessing">
+                                🗑️ Remove Duplicates
+                            </button>
+                            <div class="small text-muted mt-2">
+                                <strong>Action:</strong> Keeps servers that are in installation records, removes others
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h6 class="card-title">Sync Installation Records</h6>
+                            <p class="card-text small">Create missing installation records for servers in agent configs</p>
+                            <button class="btn btn-sm btn-success" @onclick="SyncInstallationRecordsAsync" disabled="@isProcessing">
+                                🔄 Sync Records
+                            </button>
+                            <div class="small text-muted mt-2">
+                                <strong>Action:</strong> Creates installation records for all servers in agent configs
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h6 class="card-title">Remove Orphaned Records</h6>
+                            <p class="card-text small">Remove installation records for servers that don't exist</p>
+                            <button class="btn btn-sm btn-warning" @onclick="RemoveOrphanedRecordsAsync" disabled="@isProcessing">
+                                🧹 Clean Orphans
+                            </button>
+                            <div class="small text-muted mt-2">
+                                <strong>Action:</strong> Removes records pointing to non-existent servers
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (agents.Any())
+    {
+        foreach (var agent in agents)
+        {
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Agent: @agent.Name (@agent.Id)</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-3">Agent Type</dt>
+                        <dd class="col-sm-9">@agent.Type</dd>
+
+                        <dt class="col-sm-3">Config Path</dt>
+                        <dd class="col-sm-9"><code>@agent.ConfigPath</code></dd>
+
+                        <dt class="col-sm-3">Config File Exists</dt>
+                        <dd class="col-sm-9">
+                            @if (File.Exists(agent.ConfigPath))
+                            {
+                                <span class="badge bg-success">✓ Yes</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger">✗ No</span>
+                            }
+                        </dd>
+
+                        <dt class="col-sm-3">Configured Server IDs (from config file)</dt>
+                        <dd class="col-sm-9">
+                            @if (agent.ConfiguredServerIds.Any())
+                            {
+                                <ul class="list-unstyled mb-0">
+                                    @foreach (var serverId in agent.ConfiguredServerIds)
+                                    {
+                                        <li>
+                                            <code>@serverId</code>
+                                            @{
+                                                var server = installedServers.FirstOrDefault(s => s.Id == serverId);
+                                                if (server != null)
+                                                {
+                                                    <span class="badge bg-success ms-2">Server Installed</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-warning ms-2">Server Not Installed</span>
+                                                }
+                                            }
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                            else
+                            {
+                                <em class="text-muted">None detected</em>
+                            }
+                        </dd>
+
+                        <dt class="col-sm-3">Installation Records (in-memory)</dt>
+                        <dd class="col-sm-9">
+                            @{
+                                var agentInstallations = installations.Where(i => i.AgentId == agent.Id).ToList();
+                            }
+                            @if (agentInstallations.Any())
+                            {
+                                <ul class="list-unstyled mb-0">
+                                    @foreach (var installation in agentInstallations)
+                                    {
+                                        <li>
+                                            <code>@installation.ServerId</code>
+                                            <span class="badge @(installation.IsEnabled ? "bg-success" : "bg-secondary") ms-2">
+                                                @(installation.IsEnabled ? "Enabled" : "Disabled")
+                                            </span>
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                            else
+                            {
+                                <em class="text-muted">No installation records</em>
+                            }
+                        </dd>
+
+                        <dt class="col-sm-3">Sync Status</dt>
+                        <dd class="col-sm-9">
+                            @{
+                                var notTracked = agent.ConfiguredServerIds
+                                    .Where(id => !agentInstallations.Any(i => i.ServerId == id))
+                                    .ToList();
+                            }
+                            @if (!notTracked.Any())
+                            {
+                                <span class="badge bg-success">✓ All servers tracked</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning">⚠ @notTracked.Count server(s) not tracked</span>
+                                <ul class="mt-2">
+                                    @foreach (var serverId in notTracked)
+                                    {
+                                        <li><code>@serverId</code></li>
+                                    }
+                                </ul>
+                            }
+                        </dd>
+                    </dl>
+
+                    @if (agent.ConfigPath.EndsWith(".json") && File.Exists(agent.ConfigPath))
+                    {
+                        <details class="mt-3">
+                            <summary class="btn btn-sm btn-outline-secondary">Show Config File Contents</summary>
+                            <pre class="mt-2 p-3 bg-light border rounded" style="max-height: 400px; overflow-y: auto;"><code>@GetConfigFileContents(agent.ConfigPath)</code></pre>
+                        </details>
+                    }
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="alert alert-warning">No agents detected</div>
+    }
+
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">All Installed Servers</h5>
+        </div>
+        <div class="card-body">
+            @if (installedServers.Any())
+            {
+                <ul class="list-unstyled mb-0">
+                    @foreach (var server in installedServers)
+                    {
+                        <li class="mb-2">
+                            <strong>@server.Name</strong> (<code>@server.Id</code>)
+                            <div class="small text-muted">@server.Description</div>
+                        </li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <em class="text-muted">No servers installed</em>
+            }
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0">All Installation Records</h5>
+        </div>
+        <div class="card-body">
+            @if (installations.Any())
+            {
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Server ID</th>
+                            <th>Agent ID</th>
+                            <th>Enabled</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var installation in installations)
+                        {
+                            <tr>
+                                <td><code>@installation.ServerId</code></td>
+                                <td><code>@installation.AgentId</code></td>
+                                <td>
+                                    <span class="badge @(installation.IsEnabled ? "bg-success" : "bg-secondary")">
+                                        @(installation.IsEnabled ? "Yes" : "No")
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <em class="text-muted">No installation records</em>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<Agent> agents = [];
+    private List<McpServer> installedServers = [];
+    private List<ServerInstallation> installations = [];
+    private Dictionary<string, List<McpServer>> duplicateGroups = new();
+    private string? statusMessage;
+    private string statusMessageType = "info";
+    private bool isProcessing = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshAsync();
+    }
+
+    private async Task RefreshAsync()
+    {
+        agents = (await AgentManager.DetectInstalledAgentsAsync()).ToList();
+        installedServers = (await ServerManager.GetInstalledServersAsync()).ToList();
+        installations = (await InstallationManager.GetAllInstallationsAsync()).ToList();
+        duplicateGroups.Clear();
+        StateHasChanged();
+    }
+
+    private string GetConfigFileContents(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+            {
+                return File.ReadAllText(path);
+            }
+            return "File not found";
+        }
+        catch (Exception ex)
+        {
+            return $"Error reading file: {ex.Message}";
+        }
+    }
+
+    private Task DetectDuplicatesAsync()
+    {
+        try
+        {
+            isProcessing = true;
+            duplicateGroups.Clear();
+
+            // Group servers by name (case-insensitive)
+            var serversByName = installedServers
+                .GroupBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
+                .Where(g => g.Count() > 1)
+                .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
+
+            duplicateGroups = serversByName;
+
+            if (duplicateGroups.Any())
+            {
+                statusMessage = $"Found {duplicateGroups.Count} duplicate group(s) with a total of {duplicateGroups.Sum(g => g.Value.Count)} servers";
+                statusMessageType = "warning";
+            }
+            else
+            {
+                statusMessage = "No duplicates found! ✓";
+                statusMessageType = "success";
+            }
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"Error detecting duplicates: {ex.Message}";
+            statusMessageType = "danger";
+        }
+        finally
+        {
+            isProcessing = false;
+            StateHasChanged();
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private async Task RemoveDuplicatesAsync()
+    {
+        try
+        {
+            isProcessing = true;
+            statusMessage = "Removing duplicates...";
+            statusMessageType = "info";
+            StateHasChanged();
+
+            await DetectDuplicatesAsync();
+
+            if (!duplicateGroups.Any())
+            {
+                statusMessage = "No duplicates to remove";
+                statusMessageType = "info";
+                return;
+            }
+
+            var removedCount = 0;
+            var keptCount = 0;
+
+            foreach (var group in duplicateGroups)
+            {
+                var serversInGroup = group.Value;
+
+                // Find which servers are tracked in installation records
+                var trackedServers = serversInGroup
+                    .Where(s => installations.Any(i => i.ServerId == s.Id))
+                    .ToList();
+
+                var untrackedServers = serversInGroup
+                    .Where(s => !installations.Any(i => i.ServerId == s.Id))
+                    .ToList();
+
+                // Strategy: Keep tracked servers, remove untracked ones
+                // If all are tracked or none are tracked, keep the first one
+                List<McpServer> serversToRemove;
+
+                if (trackedServers.Any())
+                {
+                    // Remove untracked servers
+                    serversToRemove = untrackedServers;
+                    keptCount += trackedServers.Count;
+                }
+                else
+                {
+                    // All are untracked - keep the first one, remove the rest
+                    serversToRemove = serversInGroup.Skip(1).ToList();
+                    keptCount++;
+                }
+
+                foreach (var server in serversToRemove)
+                {
+                    await ServerManager.UninstallServerAsync(server.Id);
+                    removedCount++;
+                }
+            }
+
+            statusMessage = $"Cleanup complete: Kept {keptCount} server(s), removed {removedCount} duplicate(s)";
+            statusMessageType = "success";
+
+            // Refresh data
+            await RefreshAsync();
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"Error removing duplicates: {ex.Message}";
+            statusMessageType = "danger";
+        }
+        finally
+        {
+            isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SyncInstallationRecordsAsync()
+    {
+        try
+        {
+            isProcessing = true;
+            statusMessage = "Syncing installation records...";
+            statusMessageType = "info";
+            StateHasChanged();
+
+            var createdCount = 0;
+
+            foreach (var agent in agents)
+            {
+                foreach (var configServerId in agent.ConfiguredServerIds)
+                {
+                    // Try exact ID match first
+                    var server = installedServers.FirstOrDefault(s => s.Id == configServerId);
+                    var actualServerId = configServerId;
+
+                    if (server == null)
+                    {
+                        // Try matching by name (case-insensitive)
+                        var matchByName = installedServers.FirstOrDefault(s =>
+                            s.Name.Equals(configServerId, StringComparison.OrdinalIgnoreCase));
+
+                        if (matchByName != null)
+                        {
+                            actualServerId = matchByName.Id;
+                        }
+                        else
+                        {
+                            // Server not installed, skip
+                            continue;
+                        }
+                    }
+
+                    // Check if installation record exists
+                    var hasInstallation = installations.Any(i =>
+                        i.ServerId == actualServerId && i.AgentId == agent.Id);
+
+                    if (!hasInstallation)
+                    {
+                        await InstallationManager.AddServerToAgentAsync(actualServerId, agent.Id);
+                        createdCount++;
+                    }
+                }
+            }
+
+            if (createdCount > 0)
+            {
+                statusMessage = $"Created {createdCount} missing installation record(s)";
+                statusMessageType = "success";
+            }
+            else
+            {
+                statusMessage = "All installation records are in sync ✓";
+                statusMessageType = "success";
+            }
+
+            // Refresh data
+            await RefreshAsync();
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"Error syncing installation records: {ex.Message}";
+            statusMessageType = "danger";
+        }
+        finally
+        {
+            isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RemoveOrphanedRecordsAsync()
+    {
+        try
+        {
+            isProcessing = true;
+            statusMessage = "Removing orphaned records...";
+            statusMessageType = "info";
+            StateHasChanged();
+
+            var removedCount = 0;
+
+            // Find installation records pointing to non-existent servers
+            var orphanedRecords = installations
+                .Where(i => !installedServers.Any(s => s.Id == i.ServerId))
+                .ToList();
+
+            foreach (var orphan in orphanedRecords)
+            {
+                await InstallationManager.RemoveServerFromAgentAsync(orphan.ServerId, orphan.AgentId);
+                removedCount++;
+            }
+
+            if (removedCount > 0)
+            {
+                statusMessage = $"Removed {removedCount} orphaned installation record(s)";
+                statusMessageType = "success";
+            }
+            else
+            {
+                statusMessage = "No orphaned records found ✓";
+                statusMessageType = "success";
+            }
+
+            // Refresh data
+            await RefreshAsync();
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"Error removing orphaned records: {ex.Message}";
+            statusMessageType = "danger";
+        }
+        finally
+        {
+            isProcessing = false;
+            StateHasChanged();
+        }
+    }
+}

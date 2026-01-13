@@ -124,6 +124,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IAgentManager, AgentManager>();
         services.AddSingleton<ICollection<ServerInstallation>, List<ServerInstallation>>(_ => []);
         services.AddSingleton<IServerMonitor, ServerMonitor>();
+        services.AddSingleton<IConfigurationWatcher, ConfigurationWatcher>();
         services.AddSingleton<ConfigurationParser>();
 
         // Register agent connectors

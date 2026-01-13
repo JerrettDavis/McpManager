@@ -72,14 +72,47 @@
                 </div>
 
                 <div class="card">
-                    <div class="card-header bg-info text-white">
-                        <h5 class="mb-0">Agents Using This Server</h5>
+                    <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Manage Agents</h5>
+                        @if (agentSelectionChanged)
+                        {
+                            <div>
+                                <button class="btn btn-sm btn-success me-2" @onclick="ApplyAgentChangesAsync" disabled="@isProcessing">
+                                    💾 Apply Changes
+                                </button>
+                                <button class="btn btn-sm btn-secondary" @onclick="CancelAgentChanges" disabled="@isProcessing">
+                                    ✖️ Cancel
+                                </button>
+                            </div>
+                        }
                     </div>
                     <div class="card-body">
-                        @if (!installations.Any())
+                        @if (!string.IsNullOrEmpty(agentMessage))
+                        {
+                            <div class="alert alert-@agentMessageType alert-dismissible fade show">
+                                @agentMessage
+                                <button type="button" class="btn-close" @onclick="() => agentMessage = null"></button>
+                            </div>
+                        }
+
+                        <div class="mb-3">
+                            <p class="text-muted mb-2">
+                                Select which agents should have this server configured. Changes are applied to all selected agents at once.
+                            </p>
+                            <div class="btn-toolbar gap-2">
+                                <button class="btn btn-sm btn-outline-primary" @onclick="SelectAllAgents" disabled="@isProcessing">
+                                    ☑ Select All
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="DeselectAllAgents" disabled="@isProcessing">
+                                    ☐ Deselect All
+                                </button>
+                            </div>
+                        </div>
+
+                        @if (!agents.Any())
                         {
                             <p class="text-muted mb-0">
-                                This server is not currently configured for any agents.
+                                No agents detected.
                             </p>
                         }
                         else
@@ -88,40 +121,94 @@
                                 <table class="table table-hover">
                                     <thead>
                                         <tr>
+                                            <th style="width: 40px;">
+                                                <input type="checkbox" class="form-check-input"
+                                                       @onchange="ToggleAllAgents"
+                                                       checked="@allAgentsSelected"
+                                                       disabled="@isProcessing" />
+                                            </th>
                                             <th>Agent</th>
-                                            <th>Status</th>
+                                            <th>Current Status</th>
+                                            <th>New Status</th>
                                             <th>Configuration</th>
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach (var installation in installations)
+                                        @foreach (var agent in agents)
                                         {
-                                            var agent = agents.FirstOrDefault(a => a.Id == installation.AgentId);
-                                            var isMatching = ConfigurationService.DoesAgentConfigMatchGlobal(server, installation);
+                                            var installation = installations.FirstOrDefault(i => i.AgentId == agent.Id);
+                                            var currentStatus = GetAgentStatus(agent.Id);
+                                            var isSelected = selectedAgents.GetValueOrDefault(agent.Id, false);
+                                            var newStatus = isSelected ? "Enabled" : "Not Added";
+                                            var statusChanged = GetStatusChanged(agent.Id);
+                                            var isMatching = installation != null && ConfigurationService.DoesAgentConfigMatchGlobal(server, installation);
+                                            var currentAgentId = agent.Id; // Capture for lambda
 
-                                            <tr>
+                                            <tr class="@(statusChanged ? "table-warning" : "")">
                                                 <td>
-                                                    <strong>@(agent?.Name ?? installation.AgentId)</strong>
+                                                    <input type="checkbox" class="form-check-input"
+                                                           checked="@isSelected"
+                                                           @onchange="@(e => ToggleAgentSelection(currentAgentId, e))"
+                                                           disabled="@isProcessing" />
                                                 </td>
                                                 <td>
-                                                    @if (installation.IsEnabled)
+                                                    <strong>@agent.Name</strong>
+                                                    <div class="small text-muted">@agent.Type</div>
+                                                </td>
+                                                <td>
+                                                    @if (installation == null)
                                                     {
-                                                        <span class="badge bg-success">Enabled</span>
+                                                        <span class="badge bg-secondary">Not Added</span>
+                                                    }
+                                                    else if (installation.IsEnabled)
+                                                    {
+                                                        <span class="badge bg-success">✓ Enabled</span>
                                                     }
                                                     else
                                                     {
-                                                        <span class="badge bg-secondary">Disabled</span>
+                                                        <span class="badge bg-warning">⏸ Disabled</span>
                                                     }
                                                 </td>
                                                 <td>
-                                                    <ConfigurationStatusBadge IsMatching="@isMatching" />
+                                                    @if (statusChanged)
+                                                    {
+                                                        if (isSelected)
+                                                        {
+                                                            <span class="badge bg-success">→ Enabled</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="badge bg-secondary">→ Not Added</span>
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="text-muted">No change</span>
+                                                    }
                                                 </td>
                                                 <td>
-                                                    <a href="/agents/@installation.AgentId/servers/@Uri.EscapeDataString(server.Id)"
-                                                       class="btn btn-sm btn-outline-primary">
-                                                        ⚙️ Configure
-                                                    </a>
+                                                    @if (installation != null)
+                                                    {
+                                                        <ConfigurationStatusBadge IsMatching="@isMatching" />
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="text-muted">—</span>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    @if (installation != null)
+                                                    {
+                                                        <a href="/agents/@agent.Id/servers/@Uri.EscapeDataString(server.Id)"
+                                                           class="btn btn-sm btn-outline-primary">
+                                                            ⚙️ Configure
+                                                        </a>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="text-muted">—</span>
+                                                    }
                                                 </td>
                                             </tr>
                                         }
@@ -200,6 +287,15 @@
     private int matchingCount = 0;
     private int differentCount = 0;
 
+    // Agent management state
+    private Dictionary<string, bool> selectedAgents = new();
+    private Dictionary<string, bool> originalAgentSelection = new();
+    private bool agentSelectionChanged = false;
+    private string? agentMessage;
+    private string agentMessageType = "info";
+    private bool isProcessing = false;
+    private bool allAgentsSelected = false;
+
     protected override async Task OnInitializedAsync()
     {
         await LoadDataAsync();
@@ -221,13 +317,27 @@
             originalConfiguration = new Dictionary<string, string>(serverConfiguration);
 
             installations = (await InstallationManager.GetInstallationsByServerIdAsync(ServerId)).ToList();
-            
+
             var allAgents = await AgentManager.DetectInstalledAgentsAsync();
             agents = allAgents.ToList();
 
             // Count matching vs different configurations
             matchingCount = installations.Count(i => ConfigurationService.DoesAgentConfigMatchGlobal(server, i));
             differentCount = installations.Count - matchingCount;
+
+            // Initialize agent selection state
+            selectedAgents.Clear();
+            foreach (var agent in agents)
+            {
+                // An agent is selected if it has an enabled installation
+                var installation = installations.FirstOrDefault(i => i.AgentId == agent.Id);
+                selectedAgents[agent.Id] = installation != null && installation.IsEnabled;
+            }
+
+            originalAgentSelection = new Dictionary<string, bool>(selectedAgents);
+            agentSelectionChanged = false;
+            agentMessage = null;
+            UpdateAllAgentsSelectedState();
         }
 
         configurationChanged = false;
@@ -298,5 +408,168 @@
             < 365 => $"{days / 30} months ago",
             _ => $"{days / 365} years ago"
         };
+    }
+
+    // Agent management methods
+    private void UpdateAllAgentsSelectedState()
+    {
+        allAgentsSelected = agents.Any() && agents.All(a => selectedAgents.GetValueOrDefault(a.Id, false));
+    }
+
+    private void ToggleAgentSelection(string agentId, ChangeEventArgs e)
+    {
+        var isChecked = e.Value is bool b && b;
+        selectedAgents[agentId] = isChecked;
+        UpdateSelectionChanged();
+        UpdateAllAgentsSelectedState();
+    }
+
+    private void ToggleAllAgents(ChangeEventArgs e)
+    {
+        var selectAll = e.Value is bool b && b;
+        foreach (var agent in agents)
+        {
+            selectedAgents[agent.Id] = selectAll;
+        }
+        UpdateSelectionChanged();
+        UpdateAllAgentsSelectedState();
+    }
+
+    private void SelectAllAgents()
+    {
+        foreach (var agent in agents)
+        {
+            selectedAgents[agent.Id] = true;
+        }
+        UpdateSelectionChanged();
+        UpdateAllAgentsSelectedState();
+    }
+
+    private void DeselectAllAgents()
+    {
+        foreach (var agent in agents)
+        {
+            selectedAgents[agent.Id] = false;
+        }
+        UpdateSelectionChanged();
+        UpdateAllAgentsSelectedState();
+    }
+
+    private void UpdateSelectionChanged()
+    {
+        agentSelectionChanged = !selectedAgents.SequenceEqual(originalAgentSelection);
+        agentMessage = null;
+    }
+
+    private string GetAgentStatus(string agentId)
+    {
+        var installation = installations.FirstOrDefault(i => i.AgentId == agentId);
+        if (installation == null) return "Not Added";
+        return installation.IsEnabled ? "Enabled" : "Disabled";
+    }
+
+    private bool GetStatusChanged(string agentId)
+    {
+        var currentlySelected = selectedAgents.GetValueOrDefault(agentId, false);
+        var originallySelected = originalAgentSelection.GetValueOrDefault(agentId, false);
+        return currentlySelected != originallySelected;
+    }
+
+    private async Task ApplyAgentChangesAsync()
+    {
+        if (server == null) return;
+
+        try
+        {
+            isProcessing = true;
+            agentMessage = "Applying changes...";
+            agentMessageType = "info";
+            StateHasChanged();
+
+            var added = 0;
+            var removed = 0;
+            var errors = new List<string>();
+
+            foreach (var agent in agents)
+            {
+                var isSelected = selectedAgents.GetValueOrDefault(agent.Id, false);
+                var wasSelected = originalAgentSelection.GetValueOrDefault(agent.Id, false);
+
+                if (isSelected == wasSelected) continue; // No change
+
+                try
+                {
+                    if (isSelected)
+                    {
+                        // Add or enable server for this agent
+                        var installation = installations.FirstOrDefault(i => i.AgentId == agent.Id);
+                        if (installation == null)
+                        {
+                            // Add server to agent
+                            await InstallationManager.AddServerToAgentAsync(ServerId, agent.Id);
+                            added++;
+                        }
+                        else if (!installation.IsEnabled)
+                        {
+                            // Enable existing server
+                            await InstallationManager.ToggleServerEnabledAsync(ServerId, agent.Id);
+                            added++;
+                        }
+                    }
+                    else
+                    {
+                        // Remove server from agent
+                        await InstallationManager.RemoveServerFromAgentAsync(ServerId, agent.Id);
+                        removed++;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    errors.Add($"{agent.Name}: {ex.Message}");
+                }
+            }
+
+            // Build success message
+            var messageParts = new List<string>();
+            if (added > 0) messageParts.Add($"{added} agent(s) added/enabled");
+            if (removed > 0) messageParts.Add($"{removed} agent(s) removed");
+
+            if (errors.Any())
+            {
+                agentMessage = $"Partial success: {string.Join(", ", messageParts)}. Errors: {string.Join("; ", errors)}";
+                agentMessageType = "warning";
+            }
+            else if (messageParts.Any())
+            {
+                agentMessage = $"Success: {string.Join(", ", messageParts)}";
+                agentMessageType = "success";
+            }
+            else
+            {
+                agentMessage = "No changes to apply";
+                agentMessageType = "info";
+            }
+
+            // Reload data
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            agentMessage = $"Error applying changes: {ex.Message}";
+            agentMessageType = "danger";
+        }
+        finally
+        {
+            isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CancelAgentChanges()
+    {
+        selectedAgents = new Dictionary<string, bool>(originalAgentSelection);
+        agentSelectionChanged = false;
+        agentMessage = null;
+        UpdateAllAgentsSelectedState();
     }
 }

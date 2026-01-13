@@ -49,8 +49,22 @@ public class InstallationManager(
             throw new InvalidOperationException($"No connector found for agent type {agent.Type}");
         }
 
-        // Add server to agent configuration
-        await connector.AddServerToAgentAsync(serverId, config);
+        // Check if installation already exists
+        var existingInstallation = installations.FirstOrDefault(i => i.ServerId == serverId && i.AgentId == agentId);
+        if (existingInstallation != null)
+        {
+            // Already tracked - just return the existing installation
+            return existingInstallation;
+        }
+
+        // Check if server is already in agent's config (to avoid overwriting existing config)
+        var isAlreadyConfigured = agent.ConfiguredServerIds.Contains(serverId);
+
+        if (!isAlreadyConfigured)
+        {
+            // Add server to agent configuration file only if it's not already there
+            await connector.AddServerToAgentAsync(serverId, config);
+        }
 
         // Create installation record
         var installation = new ServerInstallation

@@ -36,6 +36,7 @@ builder.Services.AddMcpManagerServices();
 builder.Services.AddHostedService<RegistryRefreshWorker>();
 builder.Services.AddHostedService<AgentServerSyncWorker>();
 builder.Services.AddHostedService<DownloadStatsWorker>();
+builder.Services.AddHostedService<ConfigurationWatcherWorker>();
 
 var app = builder.Build();
 

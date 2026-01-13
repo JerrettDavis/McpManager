@@ -143,77 +143,128 @@ public class AgentServerSyncWorker(
                 // Check if server is already installed
                 var existingServer = await serverManager.GetServerByIdAsync(serverId);
                 var wasNewlyInstalled = false;
-                
+                var actualServerId = serverId; // Track the actual installed server ID
+
                 if (existingServer == null)
                 {
-                    // Try to find server in registries
-                    var serverFromRegistry = await FindServerInRegistriesAsync(serverId, registries, cancellationToken);
-                    
-                    if (serverFromRegistry != null)
+                    // Server with this exact ID doesn't exist
+                    // Before creating a new one, check if one with the same name already exists
+                    var allServers = await serverManager.GetInstalledServersAsync();
+                    var existingByName = allServers.FirstOrDefault(s =>
+                        s.Name.Equals(serverId, StringComparison.OrdinalIgnoreCase));
+
+                    if (existingByName != null)
                     {
-                        // Install the server
-                        var installed = await serverManager.InstallServerAsync(serverFromRegistry);
-                        if (installed)
-                        {
-                            wasNewlyInstalled = true;
-                            newServers++;
-                            logger.LogInformation(
-                                "Auto-installed server '{ServerId}' from agent {AgentName}",
-                                serverId,
-                                agent.Name);
-                        }
+                        // Found a server with matching name but different ID - use it instead
+                        actualServerId = existingByName.Id;
+                        logger.LogInformation(
+                            "Server with name '{Name}' already exists as '{ExistingId}', using existing server",
+                            serverId,
+                            existingByName.Id);
                     }
                     else
                     {
-                        // Server not found in registries, create a minimal entry
-                        var minimalServer = new McpServer
-                        {
-                            Id = serverId,
-                            Name = serverId,
-                            Description = $"Auto-discovered from {agent.Name}",
-                            Version = "unknown",
-                            Author = "Unknown",
-                            RepositoryUrl = string.Empty,
-                            InstallCommand = string.Empty,
-                            Tags = new List<string> { "auto-discovered", agent.Type.ToString().ToLowerInvariant() }
-                        };
+                        // No existing server found - try to find in registries
+                        var serverFromRegistry = await FindServerInRegistriesAsync(serverId, registries, cancellationToken);
 
-                        var installed = await serverManager.InstallServerAsync(minimalServer);
-                        if (installed)
+                        if (serverFromRegistry != null)
                         {
-                            wasNewlyInstalled = true;
-                            newServers++;
-                            logger.LogInformation(
-                                "Auto-installed unknown server '{ServerId}' from agent {AgentName} (not found in registries)",
-                                serverId,
-                                agent.Name);
+                            // Check again if a server with this name was created in the meantime
+                            allServers = await serverManager.GetInstalledServersAsync();
+                            existingByName = allServers.FirstOrDefault(s =>
+                                s.Name.Equals(serverFromRegistry.Name, StringComparison.OrdinalIgnoreCase));
+
+                            if (existingByName != null)
+                            {
+                                // Server was created by another process - use it
+                                actualServerId = existingByName.Id;
+                                logger.LogInformation(
+                                    "Server '{Name}' was created concurrently as '{ExistingId}', using existing server",
+                                    serverFromRegistry.Name,
+                                    existingByName.Id);
+                            }
+                            else
+                            {
+                                // Safe to install - override ID to match config
+                                logger.LogDebug(
+                                    "Found server in registry with ID '{RegistryId}', overriding to use config ID '{ConfigId}'",
+                                    serverFromRegistry.Id,
+                                    serverId);
+
+                                serverFromRegistry.Id = serverId;
+
+                                // Install the server with the config file's ID
+                                var installed = await serverManager.InstallServerAsync(serverFromRegistry);
+                                if (installed)
+                                {
+                                    wasNewlyInstalled = true;
+                                    newServers++;
+                                    actualServerId = serverId;
+                                    logger.LogInformation(
+                                        "Auto-installed server '{ServerId}' from agent {AgentName}",
+                                        serverId,
+                                        agent.Name);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // Server not found in registries, create a minimal entry
+                            var minimalServer = new McpServer
+                            {
+                                Id = serverId,
+                                Name = serverId,
+                                Description = $"Auto-discovered from {agent.Name}",
+                                Version = "unknown",
+                                Author = "Unknown",
+                                RepositoryUrl = string.Empty,
+                                InstallCommand = string.Empty,
+                                Tags = new List<string> { "auto-discovered", agent.Type.ToString().ToLowerInvariant() }
+                            };
+
+                            var installed = await serverManager.InstallServerAsync(minimalServer);
+                            if (installed)
+                            {
+                                wasNewlyInstalled = true;
+                                newServers++;
+                                actualServerId = serverId;
+                                logger.LogInformation(
+                                    "Auto-installed unknown server '{ServerId}' from agent {AgentName} (not found in registries)",
+                                    serverId,
+                                    agent.Name);
+                            }
                         }
                     }
                 }
+                else
+                {
+                    // Server already exists - use its ID
+                    actualServerId = existingServer.Id;
+                }
 
                 // Check if installation relationship already exists
-                var existingInstallations = await installationManager.GetInstallationsByServerIdAsync(serverId);
+                var existingInstallations = await installationManager.GetInstallationsByServerIdAsync(actualServerId);
                 var hasRelationship = existingInstallations.Any(i => i.AgentId == agent.Id);
 
                 if (!hasRelationship)
                 {
                     try
                     {
-                        // Create the agent-server relationship
-                        await installationManager.AddServerToAgentAsync(serverId, agent.Id);
-                        
+                        // Create the agent-server relationship using the actual installed server ID
+                        await installationManager.AddServerToAgentAsync(actualServerId, agent.Id);
+
                         if (wasNewlyInstalled)
                         {
                             logger.LogDebug(
                                 "Created installation relationship: server '{ServerId}' -> agent {AgentName}",
-                                serverId,
+                                actualServerId,
                                 agent.Name);
                         }
                         else
                         {
                             logger.LogInformation(
                                 "Linked existing server '{ServerId}' to agent {AgentName}",
-                                serverId,
+                                actualServerId,
                                 agent.Name);
                         }
                     }
@@ -222,7 +273,7 @@ public class AgentServerSyncWorker(
                         logger.LogWarning(
                             ex,
                             "Failed to create installation relationship for server '{ServerId}' and agent {AgentName}",
-                            serverId,
+                            actualServerId,
                             agent.Name);
                     }
                 }
