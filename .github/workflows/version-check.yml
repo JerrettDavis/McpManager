@@ -22,29 +22,25 @@ jobs:
         fetch-depth: 0
         token: ${{ secrets.GITHUB_TOKEN }}
     
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v5
-      with:
-        dotnet-version: '10.0.x'
-    
-    - name: Install nbgv tool
-      run: dotnet tool install -g nbgv
-    
     - name: Get current version from main
       id: main_version
       run: |
-        git fetch origin main:main
-        git checkout main
-        # Use SimpleVersion which returns only MAJOR.MINOR.PATCH (no build number)
-        MAIN_VERSION=$(nbgv get-version -v SimpleVersion)
-        # Validate that MAIN_VERSION is in MAJOR.MINOR.PATCH numeric format
-        if ! echo "$MAIN_VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-          echo "Error: nbgv returned an invalid SimpleVersion: '$MAIN_VERSION'. Expected format: MAJOR.MINOR.PATCH (e.g., 1.2.3)." >&2
+        # Read version directly from version.json on main (avoids nbgv history walk
+        # which can crash if any historical version.json is malformed)
+        MAIN_BASE=$(git show origin/main:version.json | jq -r '.version')
+        if [ -z "$MAIN_BASE" ] || [ "$MAIN_BASE" = "null" ]; then
+          echo "Error: Could not read version from main's version.json" >&2
           exit 1
         fi
+        # version.json may have 2-part (0.2) or 3-part (0.2.1) — normalize to 3-part
+        PART_COUNT=$(echo "$MAIN_BASE" | tr '.' '\n' | wc -l)
+        if [ "$PART_COUNT" -eq 2 ]; then
+          MAIN_VERSION="${MAIN_BASE}.0"
+        else
+          MAIN_VERSION="$MAIN_BASE"
+        fi
         echo "version=$MAIN_VERSION" >> $GITHUB_OUTPUT
-        echo "Main branch version: $MAIN_VERSION"
-        git checkout ${{ github.event.pull_request.head.ref }}
+        echo "Main branch version: $MAIN_VERSION (from version.json: $MAIN_BASE)"
     
     - name: Determine version increment from PR
       id: version_type
@@ -114,12 +110,13 @@ jobs:
     - name: Get PR branch version
       id: pr_version
       run: |
-        # Use SimpleVersion which returns only MAJOR.MINOR.PATCH (no build number)
-        PR_VERSION=$(nbgv get-version -v SimpleVersion)
-        # Validate that PR_VERSION is in MAJOR.MINOR.PATCH numeric format
-        if ! [[ "$PR_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-          echo "Error: PR version '$PR_VERSION' is not in MAJOR.MINOR.PATCH numeric format." >&2
-          exit 1
+        # Read version directly from version.json (avoids nbgv history walk issues)
+        PR_BASE=$(jq -r '.version' version.json)
+        PART_COUNT=$(echo "$PR_BASE" | tr '.' '\n' | wc -l)
+        if [ "$PART_COUNT" -eq 2 ]; then
+          PR_VERSION="${PR_BASE}.0"
+        else
+          PR_VERSION="$PR_BASE"
         fi
         echo "version=$PR_VERSION" >> $GITHUB_OUTPUT
         echo "PR branch current version: $PR_VERSION"
