@@ -35,7 +35,8 @@ jobs:
       run: |
         git fetch origin main:main
         git checkout main
-        MAIN_VERSION=$(nbgv get-version -v Version)
+        # Use SimpleVersion which returns only MAJOR.MINOR.PATCH (no build number)
+        MAIN_VERSION=$(nbgv get-version -v SimpleVersion)
         echo "version=$MAIN_VERSION" >> $GITHUB_OUTPUT
         echo "Main branch version: $MAIN_VERSION"
         git checkout ${{ github.event.pull_request.head.ref }}
@@ -108,7 +109,8 @@ jobs:
     - name: Get PR branch version
       id: pr_version
       run: |
-        PR_VERSION=$(nbgv get-version -v Version)
+        # Use SimpleVersion which returns only MAJOR.MINOR.PATCH (no build number)
+        PR_VERSION=$(nbgv get-version -v SimpleVersion)
         echo "version=$PR_VERSION" >> $GITHUB_OUTPUT
         echo "PR branch current version: $PR_VERSION"
     

@@ -6,6 +6,9 @@
     "^refs/heads/main$",
     "^refs/heads/v\\d+(?:\\.\\d+)?$"
   ],
+  "pathFilters": [
+    "."
+  ],
   "cloudBuild": {
     "buildNumber": {
       "enabled": true
