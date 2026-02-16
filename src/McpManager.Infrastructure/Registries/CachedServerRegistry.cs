@@ -1,5 +1,6 @@
 using McpManager.Core.Interfaces;
 using McpManager.Core.Models;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace McpManager.Infrastructure.Registries;
@@ -51,10 +52,9 @@ public class CachedServerRegistry(
                 await cacheRepository.UpsertManyAsync(Name, resultsList);
                 await cacheRepository.UpdateRegistryMetadataAsync(Name, resultsList.Count, true);
             }
-            catch (Microsoft.Data.Sqlite.SqliteException)
+            catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or DbUpdateException)
             {
-                // Database doesn't exist yet - skip caching
-                // Background worker will populate cache when database is initialized
+                // Database not ready or concurrent upsert conflict - skip caching
             }
         }
         
@@ -93,10 +93,9 @@ public class CachedServerRegistry(
                 await cacheRepository.UpsertManyAsync(Name, resultsList);
                 await cacheRepository.UpdateRegistryMetadataAsync(Name, resultsList.Count, true);
             }
-            catch (Microsoft.Data.Sqlite.SqliteException)
+            catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or DbUpdateException)
             {
-                // Database doesn't exist yet - skip caching
-                // Background worker will populate cache when database is initialized
+                // Database not ready or concurrent upsert conflict - skip caching
             }
         }
         
