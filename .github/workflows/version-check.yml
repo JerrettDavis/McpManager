@@ -37,6 +37,11 @@ jobs:
         git checkout main
         # Use SimpleVersion which returns only MAJOR.MINOR.PATCH (no build number)
         MAIN_VERSION=$(nbgv get-version -v SimpleVersion)
+        # Validate that MAIN_VERSION is in MAJOR.MINOR.PATCH numeric format
+        if ! echo "$MAIN_VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+          echo "Error: nbgv returned an invalid SimpleVersion: '$MAIN_VERSION'. Expected format: MAJOR.MINOR.PATCH (e.g., 1.2.3)." >&2
+          exit 1
+        fi
         echo "version=$MAIN_VERSION" >> $GITHUB_OUTPUT
         echo "Main branch version: $MAIN_VERSION"
         git checkout ${{ github.event.pull_request.head.ref }}
@@ -111,6 +116,11 @@ jobs:
       run: |
         # Use SimpleVersion which returns only MAJOR.MINOR.PATCH (no build number)
         PR_VERSION=$(nbgv get-version -v SimpleVersion)
+        # Validate that PR_VERSION is in MAJOR.MINOR.PATCH numeric format
+        if ! [[ "$PR_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "Error: PR version '$PR_VERSION' is not in MAJOR.MINOR.PATCH numeric format." >&2
+          exit 1
+        fi
         echo "version=$PR_VERSION" >> $GITHUB_OUTPUT
         echo "PR branch current version: $PR_VERSION"
     
