@@ -12,12 +12,12 @@ jobs:
     steps:
     - uses: actions/first-interaction@v3
       with:
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
-        issue-message: |
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        issue_message: |
           👋 Thanks for opening your first issue! We appreciate your contribution to the MCP Manager project. 
           
           A maintainer will review your issue and respond as soon as possible. In the meantime, please make sure you've provided all the necessary details to help us understand and address your concern.
-        pr-message: |
+        pr_message: |
           🎉 Thanks for opening your first pull request! We're excited to review your contribution to the MCP Manager project.
           
           Please make sure:
