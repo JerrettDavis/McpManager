@@ -8,7 +8,7 @@
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/JerrettDavis/McpManager)](https://github.com/JerrettDavis/McpManager/releases)
 [![Docker](https://img.shields.io/badge/docker-ghcr.io-blue?logo=docker)](https://github.com/JerrettDavis/McpManager/pkgs/container/mcpmanager)
-[![Security Scan](https://mcpampel.com/badge/jerrettdavis/mcpmanager.svg)](https://mcpampel.com/repo/jerrettdavis/mcpmanager)
+[![MCPAmpel](https://img.shields.io/endpoint?url=https://mcpampel.com/badge/JerrettDavis/McpManager.json)](https://mcpampel.com/repo/JerrettDavis/McpManager)
 
 MCP Manager is a dashboard for discovering, installing, and managing Model Context Protocol servers across multiple AI agents.
 
