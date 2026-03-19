@@ -14,6 +14,7 @@ public class AgentManagerTests
         var mockConnector = new Mock<IAgentConnector>();
         mockConnector.Setup(c => c.AgentType).Returns(AgentType.Claude);
         mockConnector.Setup(c => c.IsAgentInstalledAsync()).ReturnsAsync(false);
+        mockConnector.Setup(c => c.GetConfiguredServersAsync()).ReturnsAsync([]);
 
         var agentManager = new AgentManager([mockConnector.Object]);
 
@@ -32,7 +33,11 @@ public class AgentManagerTests
         mockConnector.Setup(c => c.AgentType).Returns(AgentType.Claude);
         mockConnector.Setup(c => c.IsAgentInstalledAsync()).ReturnsAsync(true);
         mockConnector.Setup(c => c.GetConfigurationPathAsync()).ReturnsAsync("/path/to/config");
-        mockConnector.Setup(c => c.GetConfiguredServerIdsAsync()).ReturnsAsync(new List<string> { "server1", "server2" });
+        mockConnector.Setup(c => c.GetConfiguredServersAsync()).ReturnsAsync(new List<ConfiguredAgentServer>
+        {
+            new() { ConfiguredServerKey = "server1", ServerId = "server1", IsEnabled = true },
+            new() { ConfiguredServerKey = "server2", ServerId = "server2", IsEnabled = true }
+        });
 
         var agentManager = new AgentManager([mockConnector.Object]);
 
@@ -58,13 +63,13 @@ public class AgentManagerTests
         claudeConnector.Setup(c => c.AgentType).Returns(AgentType.Claude);
         claudeConnector.Setup(c => c.IsAgentInstalledAsync()).ReturnsAsync(true);
         claudeConnector.Setup(c => c.GetConfigurationPathAsync()).ReturnsAsync("/path/claude");
-        claudeConnector.Setup(c => c.GetConfiguredServerIdsAsync()).ReturnsAsync(new List<string>());
+        claudeConnector.Setup(c => c.GetConfiguredServersAsync()).ReturnsAsync([]);
 
         var copilotConnector = new Mock<IAgentConnector>();
         copilotConnector.Setup(c => c.AgentType).Returns(AgentType.GitHubCopilot);
         copilotConnector.Setup(c => c.IsAgentInstalledAsync()).ReturnsAsync(true);
         copilotConnector.Setup(c => c.GetConfigurationPathAsync()).ReturnsAsync("/path/copilot");
-        copilotConnector.Setup(c => c.GetConfiguredServerIdsAsync()).ReturnsAsync(new List<string>());
+        copilotConnector.Setup(c => c.GetConfiguredServersAsync()).ReturnsAsync([]);
 
         var agentManager = new AgentManager([claudeConnector.Object, copilotConnector.Object]);
 
@@ -85,7 +90,7 @@ public class AgentManagerTests
         mockConnector.Setup(c => c.AgentType).Returns(AgentType.Claude);
         mockConnector.Setup(c => c.IsAgentInstalledAsync()).ReturnsAsync(true);
         mockConnector.Setup(c => c.GetConfigurationPathAsync()).ReturnsAsync("/path/to/config");
-        mockConnector.Setup(c => c.GetConfiguredServerIdsAsync()).ReturnsAsync(new List<string>());
+        mockConnector.Setup(c => c.GetConfiguredServersAsync()).ReturnsAsync([]);
 
         var agentManager = new AgentManager([mockConnector.Object]);
 
@@ -119,7 +124,11 @@ public class AgentManagerTests
         mockConnector.Setup(c => c.AgentType).Returns(AgentType.Claude);
         mockConnector.Setup(c => c.IsAgentInstalledAsync()).ReturnsAsync(true);
         mockConnector.Setup(c => c.GetConfigurationPathAsync()).ReturnsAsync("/path");
-        mockConnector.Setup(c => c.GetConfiguredServerIdsAsync()).ReturnsAsync(new List<string> { "server1", "server2" });
+        mockConnector.Setup(c => c.GetConfiguredServersAsync()).ReturnsAsync(new List<ConfiguredAgentServer>
+        {
+            new() { ConfiguredServerKey = "server1", ServerId = "server1", IsEnabled = true },
+            new() { ConfiguredServerKey = "server2", ServerId = "server2", IsEnabled = true }
+        });
 
         var agentManager = new AgentManager([mockConnector.Object]);
 
@@ -130,5 +139,33 @@ public class AgentManagerTests
         Assert.Equal(2, serverIds.Count());
         Assert.Contains("server1", serverIds);
         Assert.Contains("server2", serverIds);
+    }
+
+    [Fact]
+    public async Task DetectInstalledAgentsAsync_UsesOpenClawDisplayName()
+    {
+        // Arrange
+        var mockConnector = new Mock<IAgentConnector>();
+        mockConnector.Setup(c => c.AgentType).Returns(AgentType.OpenClaw);
+        mockConnector.Setup(c => c.IsAgentInstalledAsync()).ReturnsAsync(true);
+        mockConnector.Setup(c => c.GetConfigurationPathAsync()).ReturnsAsync("/path/to/openclaw.json");
+        mockConnector.Setup(c => c.GetConfiguredServersAsync()).ReturnsAsync(new List<ConfiguredAgentServer>
+        {
+            new() { ConfiguredServerKey = "filesystem", ServerId = "filesystem", IsEnabled = false }
+        });
+
+        var agentManager = new AgentManager([mockConnector.Object]);
+
+        // Act
+        var agents = await agentManager.DetectInstalledAgentsAsync();
+
+        // Assert
+        var agent = Assert.Single(agents);
+        Assert.Equal("openclaw", agent.Id);
+        Assert.Equal("OpenClaw", agent.Name);
+        Assert.Equal(AgentType.OpenClaw, agent.Type);
+        Assert.Equal("/path/to/openclaw.json", agent.ConfigPath);
+        Assert.Single(agent.ConfiguredServerIds);
+        Assert.False(agent.ConfiguredServers.Single().IsEnabled);
     }
 }

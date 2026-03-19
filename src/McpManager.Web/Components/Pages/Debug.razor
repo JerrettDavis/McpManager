@@ -510,7 +510,11 @@
 
                     if (!hasInstallation)
                     {
-                        await InstallationManager.AddServerToAgentAsync(actualServerId, agent.Id);
+                        var installedServer = installedServers.FirstOrDefault(server => server.Id == actualServerId);
+                        await InstallationManager.AddServerToAgentAsync(
+                            actualServerId,
+                            agent.Id,
+                            installedServer?.Configuration == null ? null : new Dictionary<string, string>(installedServer.Configuration));
                         createdCount++;
                     }
                 }

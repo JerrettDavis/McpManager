@@ -132,6 +132,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IAgentConnector, CopilotConnector>();
         services.AddSingleton<IAgentConnector, ClaudeCodeConnector>();
         services.AddSingleton<IAgentConnector, CodexConnector>();
+        services.AddSingleton<IAgentConnector, OpenClawConnector>();
 
         // Register mock registry for demo/fallback, wrapped with caching
         services.AddSingleton<IServerRegistry>(sp =>

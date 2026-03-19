@@ -16,7 +16,7 @@ MCP Manager is a dashboard for discovering, installing, and managing Model Conte
 
 - Browse and search MCP servers from registries
 - One-click server installation and management
-- Multi-agent support (Claude Desktop, GitHub Copilot, etc.)
+- Multi-agent support (Claude Desktop, GitHub Copilot, OpenClaw, etc.)
 - Unified dashboard for all servers and agents
 - Bulk agent management with checkbox selection
 - Plugin-based architecture for extensibility

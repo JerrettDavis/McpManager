@@ -5,6 +5,8 @@ namespace McpManager.Core.Models;
 /// </summary>
 public class Agent
 {
+    private List<ConfiguredAgentServer> _configuredServers = [];
+
     /// <summary>
     /// Unique identifier for the agent.
     /// </summary>
@@ -31,9 +33,35 @@ public class Agent
     public string ConfigPath { get; set; } = string.Empty;
 
     /// <summary>
+    /// MCP servers currently configured for this agent, including enabled state.
+    /// </summary>
+    public List<ConfiguredAgentServer> ConfiguredServers
+    {
+        get => _configuredServers;
+        set => _configuredServers = value ?? [];
+    }
+
+    /// <summary>
     /// List of MCP server IDs currently configured for this agent.
     /// </summary>
-    public List<string> ConfiguredServerIds { get; set; } = [];
+    public List<string> ConfiguredServerIds
+    {
+        get => _configuredServers.Select(server => server.ServerId).ToList();
+        set => _configuredServers = value?
+            .Select(serverId => new ConfiguredAgentServer { ServerId = serverId, IsEnabled = true })
+            .ToList() ?? [];
+    }
+}
+
+/// <summary>
+/// Represents a configured MCP server entry from an agent configuration file.
+/// </summary>
+public class ConfiguredAgentServer
+{
+    public string ConfiguredServerKey { get; set; } = string.Empty;
+    public string ServerId { get; set; } = string.Empty;
+    public bool IsEnabled { get; set; } = true;
+    public Dictionary<string, string> RawConfig { get; set; } = new();
 }
 
 /// <summary>
@@ -45,5 +73,6 @@ public enum AgentType
     GitHubCopilot,
     OpenAICodex,
     ClaudeCode,
+    OpenClaw,
     Other
 }

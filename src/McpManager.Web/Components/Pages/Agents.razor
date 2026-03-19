@@ -31,6 +31,7 @@
             <ul>
                 <li><strong>Claude Desktop</strong> - Available at <a href="https://claude.ai/download" target="_blank">claude.ai/download</a></li>
                 <li><strong>GitHub Copilot</strong> - Install via VS Code extensions</li>
+                <li><strong>OpenClaw</strong> - Available at <a href="https://openclaw.ai" target="_blank">openclaw.ai</a></li>
             </ul>
             <hr />
             <button class="btn btn-primary" @onclick="RefreshAgentsAsync">
@@ -118,6 +119,7 @@
             AgentType.GitHubCopilot => "bg-success",
             AgentType.OpenAICodex => "bg-info",
             AgentType.ClaudeCode => "bg-warning",
+            AgentType.OpenClaw => "bg-dark",
             _ => "bg-secondary"
         };
     }

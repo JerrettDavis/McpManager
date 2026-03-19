@@ -24,9 +24,19 @@ public interface IInstallationManager
     Task<IEnumerable<ServerInstallation>> GetInstallationsByAgentIdAsync(string agentId);
 
     /// <summary>
+    /// Removes a tracked installation record without mutating the agent config.
+    /// </summary>
+    Task<bool> UntrackServerAsync(string installationId);
+
+    /// <summary>
     /// Adds a server to an agent.
     /// </summary>
     Task<ServerInstallation> AddServerToAgentAsync(string serverId, string agentId, Dictionary<string, string>? config = null);
+
+    /// <summary>
+    /// Tracks a server that is already configured in an agent without mutating the agent config.
+    /// </summary>
+    Task<ServerInstallation> TrackConfiguredServerAsync(string serverId, string agentId, bool isEnabled, string? configuredServerKey = null, Dictionary<string, string>? config = null);
 
     /// <summary>
     /// Removes a server from an agent.

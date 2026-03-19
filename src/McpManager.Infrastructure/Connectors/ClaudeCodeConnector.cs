@@ -45,7 +45,13 @@ public class ClaudeCodeConnector : IAgentConnector
 
     public async Task<IEnumerable<string>> GetConfiguredServerIdsAsync()
     {
-        var serverIds = new HashSet<string>();
+        var configuredServers = await GetConfiguredServersAsync();
+        return configuredServers.Select(server => server.ServerId).ToList();
+    }
+
+    public async Task<IEnumerable<ConfiguredAgentServer>> GetConfiguredServersAsync()
+    {
+        var configuredServers = new Dictionary<string, ConfiguredAgentServer>(StringComparer.OrdinalIgnoreCase);
 
         // Check user config (~/.claude.json)
         var userConfigPath = GetUserConfigPath();
@@ -68,10 +74,15 @@ public class ClaudeCodeConnector : IAgentConnector
                 if (config?.McpServers != null)
                 {
                     Console.WriteLine($"[ClaudeCodeConnector] Found {config.McpServers.Count} user-level MCP servers");
-                    foreach (var key in config.McpServers.Keys)
+                    foreach (var (key, serverConfig) in config.McpServers)
                     {
                         Console.WriteLine($"[ClaudeCodeConnector] Adding server: {key}");
-                        serverIds.Add(key);
+                        configuredServers[key] = new ConfiguredAgentServer
+                        {
+                            ConfiguredServerKey = key,
+                            ServerId = key,
+                            IsEnabled = serverConfig.Disabled != true
+                        };
                     }
                 }
                 else
@@ -99,10 +110,15 @@ public class ClaudeCodeConnector : IAgentConnector
                         if (config.Projects.TryGetValue(path, out var project) && project.McpServers != null)
                         {
                             Console.WriteLine($"[ClaudeCodeConnector] Found {project.McpServers.Count} project-level servers for {path}");
-                            foreach (var key in project.McpServers.Keys)
+                            foreach (var (key, serverConfig) in project.McpServers)
                             {
                                 Console.WriteLine($"[ClaudeCodeConnector] Adding project server: {key}");
-                                serverIds.Add(key);
+                                configuredServers[key] = new ConfiguredAgentServer
+                                {
+                                    ConfiguredServerKey = key,
+                                    ServerId = key,
+                                    IsEnabled = serverConfig.Disabled != true
+                                };
                             }
                         }
                     }
@@ -126,9 +142,14 @@ public class ClaudeCodeConnector : IAgentConnector
 
                 if (config?.McpServers != null)
                 {
-                    foreach (var key in config.McpServers.Keys)
+                    foreach (var (key, serverConfig) in config.McpServers)
                     {
-                        serverIds.Add(key);
+                        configuredServers[key] = new ConfiguredAgentServer
+                        {
+                            ConfiguredServerKey = key,
+                            ServerId = key,
+                            IsEnabled = serverConfig.Disabled != true
+                        };
                     }
                 }
             }
@@ -138,7 +159,7 @@ public class ClaudeCodeConnector : IAgentConnector
             }
         }
 
-        return serverIds;
+        return configuredServers.Values;
     }
 
     public async Task<bool> AddServerToAgentAsync(string serverId, Dictionary<string, string>? config = null)

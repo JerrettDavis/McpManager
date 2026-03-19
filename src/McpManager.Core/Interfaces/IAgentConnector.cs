@@ -30,6 +30,11 @@ public interface IAgentConnector
     Task<IEnumerable<string>> GetConfiguredServerIdsAsync();
 
     /// <summary>
+    /// Reads the agent's configuration to get MCP servers and their enabled state.
+    /// </summary>
+    Task<IEnumerable<ConfiguredAgentServer>> GetConfiguredServersAsync();
+
+    /// <summary>
     /// Adds an MCP server to the agent's configuration.
     /// </summary>
     Task<bool> AddServerToAgentAsync(string serverId, Dictionary<string, string>? config = null);

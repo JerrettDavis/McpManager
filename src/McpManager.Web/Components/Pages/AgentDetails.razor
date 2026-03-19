@@ -68,22 +68,31 @@
                                     <tbody>
                                         @foreach (var server in installedServers)
                                         {
-                                            var installation = serverInstallations
-                                                .FirstOrDefault(i => i.ServerId == server.Id && i.AgentId == AgentId);
-                                            var isConfigured = installation != null;
-                                            var isEnabled = installation?.IsEnabled ?? false;
+                                            var matchingInstallations = serverInstallations
+                                                .Where(i => i.ServerId == server.Id && i.AgentId == AgentId)
+                                                .ToList();
+                                            var isConfigured = matchingInstallations.Any();
+                                            var enabledCount = matchingInstallations.Count(i => i.IsEnabled);
+                                            var disabledCount = matchingInstallations.Count - enabledCount;
+                                            var showMixedState = enabledCount > 0 && disabledCount > 0;
+                                            var isEnabled = isConfigured && disabledCount == 0;
+                                            var canOpenSingleConfiguration = matchingInstallations.Count == 1;
 
                                             <tr>
                                                 <td>
                                                     <strong>@server.Name</strong>
                                                     <div class="small text-muted">@server.Description</div>
+                                                    @if (matchingInstallations.Count > 1)
+                                                    {
+                                                        <div class="small text-muted">@matchingInstallations.Count configured aliases</div>
+                                                    }
                                                 </td>
                                                 <td>@server.Version</td>
                                                 <td>
                                                     @if (isConfigured)
                                                     {
-                                                        <span class="badge @(isEnabled ? "bg-success" : "bg-warning")">
-                                                            @(isEnabled ? "✓ Enabled" : "⏸ Disabled")
+                                                        <span class="badge @(showMixedState ? "bg-info" : isEnabled ? "bg-success" : "bg-warning")">
+                                                            @(showMixedState ? "⇄ Mixed" : isEnabled ? "✓ Enabled" : "⏸ Disabled")
                                                         </span>
                                                     }
                                                     else
@@ -95,10 +104,13 @@
                                                     @if (isConfigured)
                                                     {
                                                         <div class="btn-group btn-group-sm">
-                                                            <a href="/agents/@AgentId/servers/@Uri.EscapeDataString(server.Id)"
-                                                               class="btn btn-outline-secondary">
-                                                                ⚙️
-                                                            </a>
+                                                            @if (canOpenSingleConfiguration)
+                                                            {
+                                                                <a href="/agents/@AgentId/servers/@Uri.EscapeDataString(server.Id)"
+                                                                   class="btn btn-outline-secondary">
+                                                                    ⚙️
+                                                                </a>
+                                                            }
                                                             <button class="btn btn-outline-primary" 
                                                                     @onclick="() => ToggleServerAsync(server.Id)">
                                                                 @(isEnabled ? "⏸ Disable" : "▶ Enable")
@@ -205,13 +217,29 @@
             // Get installations from in-memory collection
             var installations = await InstallationManager.GetInstallationsByAgentIdAsync(AgentId);
             var installationsList = installations.ToList();
+            var currentConfiguredKeys = agent.ConfiguredServers
+                .Select(configuredServer => configuredServer.ConfiguredServerKey)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var staleInstallation in installationsList
+                .Where(existingInstallation => !string.IsNullOrWhiteSpace(existingInstallation.ConfiguredServerKey) &&
+                                               !currentConfiguredKeys.Contains(existingInstallation.ConfiguredServerKey))
+                .ToList())
+            {
+                await InstallationManager.UntrackServerAsync(staleInstallation.Id);
+            }
+
+            installations = await InstallationManager.GetInstallationsByAgentIdAsync(AgentId);
+            installationsList = installations.ToList();
 
             // Sync with actual agent configuration - create installation records
             // for servers that exist in the agent's config file but aren't tracked yet
-            foreach (var configServerId in agent.ConfiguredServerIds)
+            foreach (var configuredServer in agent.ConfiguredServers)
             {
                 try
                 {
+                    var configServerId = configuredServer.ServerId;
+
                     // First, try to find by exact ID match
                     var server = await ServerManager.GetServerByIdAsync(configServerId);
                     var actualServerId = configServerId;
@@ -240,18 +268,39 @@
                     }
 
                     // Check if installation relationship exists
-                    var existingInstallation = installationsList.FirstOrDefault(i => i.ServerId == actualServerId);
+                    var configuredServerKey = configuredServer.ConfiguredServerKey;
+                    var existingInstallation = installationsList.FirstOrDefault(i =>
+                        i.AgentId == AgentId &&
+                        (string.IsNullOrWhiteSpace(configuredServerKey)
+                            ? string.Equals(i.ServerId, actualServerId, StringComparison.OrdinalIgnoreCase)
+                            : string.Equals(i.ConfiguredServerKey, configuredServerKey, StringComparison.OrdinalIgnoreCase)));
                     if (existingInstallation == null)
                     {
-                        // Create installation relationship using the actual server ID
-                        await InstallationManager.AddServerToAgentAsync(actualServerId, AgentId);
+                        // Track the relationship without mutating the agent config; the config file is the source of truth.
+                        await InstallationManager.TrackConfiguredServerAsync(
+                            actualServerId,
+                            AgentId,
+                            configuredServer.IsEnabled,
+                            configuredServerKey,
+                            configuredServer.RawConfig);
+
                         Console.WriteLine($"[AgentDetails] Created installation: '{actualServerId}' -> '{AgentId}'");
+                    }
+                    else if (existingInstallation.IsEnabled != configuredServer.IsEnabled ||
+                             !string.Equals(existingInstallation.ConfiguredServerKey, configuredServer.ConfiguredServerKey, StringComparison.Ordinal))
+                    {
+                        await InstallationManager.TrackConfiguredServerAsync(
+                            actualServerId,
+                            AgentId,
+                            configuredServer.IsEnabled,
+                            configuredServerKey,
+                            configuredServer.RawConfig);
                     }
                 }
                 catch (Exception ex)
                 {
-                    syncError = $"Error syncing server '{configServerId}': {ex.Message}";
-                    Console.WriteLine($"[AgentDetails] Sync error for {configServerId}: {ex}");
+                    syncError = $"Error syncing server '{configuredServer.ServerId}': {ex.Message}";
+                    Console.WriteLine($"[AgentDetails] Sync error for {configuredServer.ServerId}: {ex}");
                 }
             }
 
@@ -263,7 +312,14 @@
 
     private async Task AddServerAsync(string serverId)
     {
-        await InstallationManager.AddServerToAgentAsync(serverId, AgentId);
+        var serverConfiguration = installedServers
+            .FirstOrDefault(server => server.Id == serverId)?
+            .Configuration;
+
+        await InstallationManager.AddServerToAgentAsync(
+            serverId,
+            AgentId,
+            serverConfiguration == null ? null : new Dictionary<string, string>(serverConfiguration));
         await LoadDataAsync();
     }
 
