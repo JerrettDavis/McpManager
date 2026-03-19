@@ -5,13 +5,13 @@ namespace McpManager.Application.Services;
 
 /// <summary>
 /// Service for parsing MCP server configurations from various agent-specific formats.
-/// Supports Claude, Copilot, and Codex configuration formats.
+/// Supports Claude, Copilot, Codex, and OpenClaw configuration formats.
 /// </summary>
 public class ConfigurationParser
 {
     /// <summary>
-    /// Attempts to parse a configuration string and convert it to a McpServer.
-    /// Auto-detects the format (Claude, Copilot, or Codex).
+     /// Attempts to parse a configuration string and convert it to a McpServer.
+    /// Auto-detects the format (Claude, Copilot, Codex, or OpenClaw).
     /// </summary>
     public (bool success, McpServer? server, string error) ParseConfiguration(string configText, string? serverId = null)
     {
@@ -30,6 +30,25 @@ public class ConfigurationParser
             if (root.TryGetProperty("mcpServers", out var mcpServersElement))
             {
                 return ParseFullConfiguration(mcpServersElement);
+            }
+            else if (root.TryGetProperty("mcp", out var mcpElement))
+            {
+                if (mcpElement.ValueKind != JsonValueKind.Object)
+                {
+                    return (false, null, "mcp must be an object");
+                }
+
+                if (!mcpElement.TryGetProperty("servers", out var openClawServersElement))
+                {
+                    return (false, null, "mcp.servers must be present");
+                }
+
+                if (openClawServersElement.ValueKind != JsonValueKind.Object)
+                {
+                    return (false, null, "mcp.servers must be an object");
+                }
+
+                return ParseFullConfiguration(openClawServersElement);
             }
             else if (root.TryGetProperty("command", out _))
             {
@@ -111,12 +130,7 @@ public class ConfigurationParser
             {
                 if (args.ValueKind == JsonValueKind.Array)
                 {
-                    var argsList = new List<string>();
-                    foreach (var arg in args.EnumerateArray())
-                    {
-                        argsList.Add(arg.GetString() ?? "");
-                    }
-                    server.Configuration["args"] = string.Join(" ", argsList);
+                    server.Configuration["args"] = args.GetRawText();
                 }
                 else
                 {

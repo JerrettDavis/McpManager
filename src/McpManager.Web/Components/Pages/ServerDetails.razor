@@ -329,9 +329,9 @@
             selectedAgents.Clear();
             foreach (var agent in agents)
             {
-                // An agent is selected if it has an enabled installation
-                var installation = installations.FirstOrDefault(i => i.AgentId == agent.Id);
-                selectedAgents[agent.Id] = installation != null && installation.IsEnabled;
+                // An agent is selected if it has at least one enabled installation for this server.
+                var agentInstallations = installations.Where(i => i.AgentId == agent.Id).ToList();
+                selectedAgents[agent.Id] = agentInstallations.Any(i => i.IsEnabled);
             }
 
             originalAgentSelection = new Dictionary<string, bool>(selectedAgents);
@@ -463,9 +463,13 @@
 
     private string GetAgentStatus(string agentId)
     {
-        var installation = installations.FirstOrDefault(i => i.AgentId == agentId);
-        if (installation == null) return "Not Added";
-        return installation.IsEnabled ? "Enabled" : "Disabled";
+        var agentInstallations = installations.Where(i => i.AgentId == agentId).ToList();
+        if (!agentInstallations.Any()) return "Not Added";
+
+        var enabledCount = agentInstallations.Count(i => i.IsEnabled);
+        if (enabledCount == agentInstallations.Count) return "Enabled";
+        if (enabledCount == 0) return "Disabled";
+        return "Mixed";
     }
 
     private bool GetStatusChanged(string agentId)
@@ -502,16 +506,19 @@
                     if (isSelected)
                     {
                         // Add or enable server for this agent
-                        var installation = installations.FirstOrDefault(i => i.AgentId == agent.Id);
-                        if (installation == null)
+                        var agentInstallations = installations.Where(i => i.AgentId == agent.Id).ToList();
+                        if (!agentInstallations.Any())
                         {
                             // Add server to agent
-                            await InstallationManager.AddServerToAgentAsync(ServerId, agent.Id);
+                            await InstallationManager.AddServerToAgentAsync(
+                                ServerId,
+                                agent.Id,
+                                server?.Configuration == null ? null : new Dictionary<string, string>(server.Configuration));
                             added++;
                         }
-                        else if (!installation.IsEnabled)
+                        else if (agentInstallations.Any(i => !i.IsEnabled))
                         {
-                            // Enable existing server
+                            // Enable all tracked installations for this server on the agent.
                             await InstallationManager.ToggleServerEnabledAsync(ServerId, agent.Id);
                             added++;
                         }

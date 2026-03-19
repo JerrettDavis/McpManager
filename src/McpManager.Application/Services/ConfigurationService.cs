@@ -46,7 +46,7 @@ public class ConfigurationService(IInstallationManager installationManager) : IC
     public bool DoesAgentConfigMatchGlobal(McpServer server, ServerInstallation installation)
     {
         var globalConfig = server.Configuration;
-        var agentConfig = installation.AgentSpecificConfig;
+        var agentConfig = GetEffectiveConfiguration(server, installation);
 
         return AreConfigurationsEqual(globalConfig, agentConfig);
     }

@@ -60,6 +60,68 @@ public class ConfigurationParserTests
     }
 
     [Fact]
+    public void ParseConfiguration_WithOpenClawStyleFullConfig_ReturnsServer()
+    {
+        // Arrange
+        const string config = """
+                              {
+                                  "mcp": {
+                                      "servers": {
+                                          "filesystem": {
+                                              "command": "npx",
+                                              "args": ["-y", "@modelcontextprotocol/server-filesystem", "C:\\data"]
+                                          }
+                                      }
+                                  }
+                              }
+                              """;
+
+        // Act
+        var (success, server, _) = _parser.ParseConfiguration(config);
+
+        // Assert
+        Assert.True(success);
+        Assert.NotNull(server);
+        Assert.Equal("filesystem", server.Id);
+        Assert.Equal("npx", server.Configuration["command"]);
+        Assert.Contains("@modelcontextprotocol/server-filesystem", server.Configuration["args"]);
+    }
+
+    [Fact]
+    public void ParseConfiguration_WithOpenClawArgsContainingSpaces_PreservesArrayShape()
+    {
+        const string config = """
+                              {
+                                  "mcp": {
+                                      "servers": {
+                                          "filesystem": {
+                                              "command": "npx",
+                                              "args": ["-y", "@modelcontextprotocol/server-filesystem", "C:\\Program Files\\Repos"]
+                                          }
+                                      }
+                                  }
+                              }
+                              """;
+
+        var (success, server, _) = _parser.ParseConfiguration(config);
+
+        Assert.True(success);
+        Assert.NotNull(server);
+        Assert.StartsWith("[", server.Configuration["args"]);
+        Assert.Contains("\"C:\\\\Program Files\\\\Repos\"", server.Configuration["args"]);
+    }
+
+    [Fact]
+    public void ParseConfiguration_WithInvalidOpenClawWrapperShape_ReturnsFalse()
+    {
+        var (success, server, error) = _parser.ParseConfiguration("""{"mcp":{"servers":42}}""");
+
+        Assert.False(success);
+        Assert.Null(server);
+        Assert.Contains("mcp.servers", error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void ParseConfiguration_WithCodexStyleSingleServer_ReturnsServer()
     {
         // Arrange

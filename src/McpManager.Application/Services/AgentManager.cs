@@ -18,7 +18,17 @@ public class AgentManager(IEnumerable<IAgentConnector> connectors) : IAgentManag
             if (isInstalled)
             {
                 var configPath = await connector.GetConfigurationPathAsync();
-                var serverIds = await connector.GetConfiguredServerIdsAsync();
+                List<ConfiguredAgentServer>? configuredServersList = null;
+                var configuredServersTask = connector.GetConfiguredServersAsync();
+                if (configuredServersTask != null)
+                {
+                    var configuredServers = await configuredServersTask;
+                    configuredServersList = configuredServers?.ToList();
+                }
+
+                configuredServersList ??= (await connector.GetConfiguredServerIdsAsync())
+                    .Select(serverId => new ConfiguredAgentServer { ServerId = serverId, IsEnabled = true })
+                    .ToList();
 
                 agents.Add(new Agent
                 {
@@ -27,7 +37,7 @@ public class AgentManager(IEnumerable<IAgentConnector> connectors) : IAgentManag
                     Type = connector.AgentType,
                     IsDetected = true,
                     ConfigPath = configPath,
-                    ConfiguredServerIds = serverIds.ToList()
+                    ConfiguredServers = configuredServersList
                 });
             }
         }
@@ -54,6 +64,7 @@ public class AgentManager(IEnumerable<IAgentConnector> connectors) : IAgentManag
             AgentType.Claude => "Claude Desktop",
             AgentType.GitHubCopilot => "GitHub Copilot",
             AgentType.OpenAICodex => "OpenAI Codex",
+            AgentType.OpenClaw => "OpenClaw",
             _ => agentType.ToString()
         };
     }

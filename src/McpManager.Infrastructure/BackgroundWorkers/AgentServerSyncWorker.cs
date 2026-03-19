@@ -120,7 +120,20 @@ public class AgentServerSyncWorker(
 
         try
         {
-            if (!agent.ConfiguredServerIds.Any())
+            var existingInstallations = (await installationManager.GetInstallationsByAgentIdAsync(agent.Id)).ToList();
+            var currentConfiguredKeys = agent.ConfiguredServers
+                .Select(server => server.ConfiguredServerKey)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var staleInstallation in existingInstallations
+                .Where(installation => !string.IsNullOrWhiteSpace(installation.ConfiguredServerKey) &&
+                                       !currentConfiguredKeys.Contains(installation.ConfiguredServerKey))
+                .ToList())
+            {
+                await installationManager.UntrackServerAsync(staleInstallation.Id);
+            }
+
+            if (!agent.ConfiguredServers.Any())
             {
                 logger.LogDebug("Agent {AgentName} has no configured servers", agent.Name);
                 return (0, 0);
@@ -128,10 +141,10 @@ public class AgentServerSyncWorker(
 
             logger.LogDebug(
                 "Syncing {Count} server(s) from agent {AgentName}",
-                agent.ConfiguredServerIds.Count,
+                agent.ConfiguredServers.Count,
                 agent.Name);
 
-            foreach (var serverId in agent.ConfiguredServerIds)
+            foreach (var configuredServer in agent.ConfiguredServers)
             {
                 if (cancellationToken.IsCancellationRequested)
                 {
@@ -139,6 +152,7 @@ public class AgentServerSyncWorker(
                 }
 
                 synced++;
+                var serverId = configuredServer.ServerId;
 
                 // Check if server is already installed
                 var existingServer = await serverManager.GetServerByIdAsync(serverId);
@@ -243,15 +257,25 @@ public class AgentServerSyncWorker(
                 }
 
                 // Check if installation relationship already exists
-                var existingInstallations = await installationManager.GetInstallationsByServerIdAsync(actualServerId);
-                var hasRelationship = existingInstallations.Any(i => i.AgentId == agent.Id);
+                var configuredServerKey = configuredServer.ConfiguredServerKey;
+                var serverInstallations = await installationManager.GetInstallationsByServerIdAsync(actualServerId);
+                var existingInstallation = serverInstallations.FirstOrDefault(i =>
+                    string.Equals(i.AgentId, agent.Id, StringComparison.OrdinalIgnoreCase) &&
+                    (string.IsNullOrWhiteSpace(configuredServerKey)
+                        ? string.Equals(i.ServerId, actualServerId, StringComparison.OrdinalIgnoreCase)
+                        : string.Equals(i.ConfiguredServerKey, configuredServerKey, StringComparison.OrdinalIgnoreCase)));
 
-                if (!hasRelationship)
+                if (existingInstallation == null)
                 {
                     try
                     {
-                        // Create the agent-server relationship using the actual installed server ID
-                        await installationManager.AddServerToAgentAsync(actualServerId, agent.Id);
+                        // Track the relationship without mutating the agent config; the config file is the source of truth.
+                        await installationManager.TrackConfiguredServerAsync(
+                            actualServerId,
+                            agent.Id,
+                            configuredServer.IsEnabled,
+                            configuredServerKey,
+                            configuredServer.RawConfig);
 
                         if (wasNewlyInstalled)
                         {
@@ -276,6 +300,15 @@ public class AgentServerSyncWorker(
                             actualServerId,
                             agent.Name);
                     }
+                }
+                else
+                {
+                    await installationManager.TrackConfiguredServerAsync(
+                            actualServerId,
+                            agent.Id,
+                            configuredServer.IsEnabled,
+                            configuredServerKey,
+                            configuredServer.RawConfig);
                 }
             }
 

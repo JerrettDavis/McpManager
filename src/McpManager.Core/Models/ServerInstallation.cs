@@ -21,6 +21,12 @@ public class ServerInstallation
     public string AgentId { get; set; } = string.Empty;
 
     /// <summary>
+    /// Key used in the agent configuration file for this server.
+    /// May differ from <see cref="ServerId"/> when the app reconciles a configured alias to an existing installed server.
+    /// </summary>
+    public string ConfiguredServerKey { get; set; } = string.Empty;
+
+    /// <summary>
     /// Whether this server is enabled for the agent.
     /// </summary>
     public bool IsEnabled { get; set; }

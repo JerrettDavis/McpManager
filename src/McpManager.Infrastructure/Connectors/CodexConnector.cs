@@ -26,6 +26,12 @@ public class CodexConnector : IAgentConnector
 
     public async Task<IEnumerable<string>> GetConfiguredServerIdsAsync()
     {
+        var configuredServers = await GetConfiguredServersAsync();
+        return configuredServers.Select(server => server.ServerId).ToList();
+    }
+
+    public async Task<IEnumerable<ConfiguredAgentServer>> GetConfiguredServersAsync()
+    {
         var configPath = GetCodexConfigPath();
         if (!File.Exists(configPath))
         {
@@ -36,7 +42,13 @@ public class CodexConnector : IAgentConnector
         {
             var json = await File.ReadAllTextAsync(configPath);
             var config = JsonSerializer.Deserialize<CodexConfig>(json);
-            return config?.McpServers?.Keys ?? Enumerable.Empty<string>();
+
+            return config?.McpServers?.Select(server => new ConfiguredAgentServer
+            {
+                ConfiguredServerKey = server.Key,
+                ServerId = server.Key,
+                IsEnabled = server.Value.Enabled
+            }).ToList() ?? [];
         }
         catch
         {
