@@ -14,46 +14,24 @@ public class AgentManager(IEnumerable<IAgentConnector> connectors) : IAgentManag
 
         foreach (var connector in connectors)
         {
-            var isInstalled = await connector.IsAgentInstalledAsync();
-            if (isInstalled)
+            var agent = await BuildAgentAsync(connector, includeRuntimeCatalog: false);
+            if (agent != null)
             {
-                var configPath = await connector.GetConfigurationPathAsync();
-                List<ConfiguredAgentServer>? configuredServersList = null;
-                var configuredServersTask = connector.GetConfiguredServersAsync();
-                if (configuredServersTask != null)
-                {
-                    var configuredServers = await configuredServersTask;
-                    configuredServersList = configuredServers?.ToList();
-                }
-
-                configuredServersList ??= (await connector.GetConfiguredServerIdsAsync())
-                    .Select(serverId => new ConfiguredAgentServer
-                    {
-                        ConfiguredServerKey = serverId,
-                        ServerId = serverId,
-                        IsEnabled = true
-                    })
-                    .ToList();
-
-                agents.Add(new Agent
-                {
-                    Id = connector.AgentType.ToString().ToLowerInvariant(),
-                    Name = GetAgentDisplayName(connector.AgentType),
-                    Type = connector.AgentType,
-                    IsDetected = true,
-                    ConfigPath = configPath,
-                    ConfiguredServers = configuredServersList
-                });
+                agents.Add(agent);
             }
         }
 
         return agents;
     }
 
-    public async Task<Agent?> GetAgentByIdAsync(string agentId)
+    public async Task<Agent?> GetAgentByIdAsync(string agentId, bool includeRuntimeCatalog = false)
     {
-        var agents = await DetectInstalledAgentsAsync();
-        return agents.FirstOrDefault(a => a.Id == agentId);
+        var connector = connectors.FirstOrDefault(candidate =>
+            string.Equals(candidate.AgentType.ToString(), agentId, StringComparison.OrdinalIgnoreCase));
+
+        return connector == null
+            ? null
+            : await BuildAgentAsync(connector, includeRuntimeCatalog);
     }
 
     public async Task<IEnumerable<string>> GetAgentServerIdsAsync(string agentId)
@@ -62,6 +40,49 @@ public class AgentManager(IEnumerable<IAgentConnector> connectors) : IAgentManag
         return agent?.ConfiguredServers
             .Select(server => string.IsNullOrWhiteSpace(server.ConfiguredServerKey) ? server.ServerId : server.ConfiguredServerKey)
             ?? Enumerable.Empty<string>();
+    }
+
+    private async Task<Agent?> BuildAgentAsync(IAgentConnector connector, bool includeRuntimeCatalog)
+    {
+        if (!await connector.IsAgentInstalledAsync())
+        {
+            return null;
+        }
+
+        var configPath = await connector.GetConfigurationPathAsync();
+        List<ConfiguredAgentServer>? configuredServersList = null;
+        var configuredServersTask = connector.GetConfiguredServersAsync();
+        if (configuredServersTask != null)
+        {
+            var configuredServers = await configuredServersTask;
+            configuredServersList = configuredServers?.ToList();
+        }
+
+        configuredServersList ??= (await connector.GetConfiguredServerIdsAsync())
+            .Select(serverId => new ConfiguredAgentServer
+            {
+                ConfiguredServerKey = serverId,
+                ServerId = serverId,
+                IsEnabled = true
+            })
+            .ToList();
+
+        AgentRuntimeCatalog? runtimeCatalog = null;
+        if (includeRuntimeCatalog && connector is IAgentRuntimeConnector runtimeConnector)
+        {
+            runtimeCatalog = await runtimeConnector.GetRuntimeCatalogAsync();
+        }
+
+        return new Agent
+        {
+            Id = connector.AgentType.ToString().ToLowerInvariant(),
+            Name = GetAgentDisplayName(connector.AgentType),
+            Type = connector.AgentType,
+            IsDetected = true,
+            ConfigPath = configPath,
+            ConfiguredServers = configuredServersList,
+            RuntimeCatalog = runtimeCatalog
+        };
     }
 
     private static string GetAgentDisplayName(AgentType agentType)

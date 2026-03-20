@@ -297,8 +297,30 @@ public class InstallationManager(
             string.Equals(i.ServerId, serverId, KeyComparison));
     }
 
-    private List<ServerInstallation> GetOperationTargets(Agent agent, string agentId, string serverId)
+    private List<ServerInstallation> GetOperationTargets(Agent agent, string agentId, string targetId)
     {
+        var exactConfiguredServer = agent.ConfiguredServers.FirstOrDefault(configuredServer =>
+            string.Equals(configuredServer.ConfiguredServerKey, targetId, StringComparison.OrdinalIgnoreCase));
+        if (exactConfiguredServer != null)
+        {
+            var trackedByKey = installations.FirstOrDefault(installation =>
+                string.Equals(installation.AgentId, agentId, KeyComparison) &&
+                string.Equals(installation.ConfiguredServerKey, exactConfiguredServer.ConfiguredServerKey, KeyComparison));
+
+            return
+            [
+                trackedByKey ?? new ServerInstallation
+                {
+                    AgentId = agentId,
+                    ServerId = exactConfiguredServer.ServerId,
+                    ConfiguredServerKey = exactConfiguredServer.ConfiguredServerKey,
+                    IsEnabled = exactConfiguredServer.IsEnabled,
+                    AgentSpecificConfig = exactConfiguredServer.RawConfig
+                }
+            ];
+        }
+
+        var serverId = targetId;
         var trackedInstallations = FindTrackedInstallations(agentId, serverId).ToList();
         var targetsByConfiguredKey = trackedInstallations
             .ToDictionary(
