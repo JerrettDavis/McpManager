@@ -46,7 +46,25 @@
                         }
                     </div>
                     <div class="card-body">
-                        @if (installation == null)
+                        @if (hasAmbiguousInstallations)
+                        {
+                            <div class="alert alert-warning">
+                                <p><strong>Multiple configured entries were found for this server.</strong></p>
+                                <p class="mb-2">This page can't safely edit a single entry until a specific configured key is selected.</p>
+                                <ul class="mb-0">
+                                    @foreach (var matchingInstallation in matchingInstallations)
+                                    {
+                                        <li>
+                                            <code>@matchingInstallation.ConfiguredServerKey</code>
+                                            <span class="badge @(matchingInstallation.IsEnabled ? "bg-success" : "bg-secondary") ms-2">
+                                                @(matchingInstallation.IsEnabled ? "Enabled" : "Disabled")
+                                            </span>
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        }
+                        else if (installation == null)
                         {
                             <div class="alert alert-warning">
                                 <p><strong>This server is not configured for this agent yet.</strong></p>
@@ -153,8 +171,12 @@
                             <dd>@agent.Type</dd>
 
                             <dt>Status</dt>
-                            <dd>
-                                @if (installation != null)
+                                <dd>
+                                @if (hasAmbiguousInstallations)
+                                {
+                                    <span class="badge bg-warning">Multiple Entries</span>
+                                }
+                                else if (installation != null)
                                 {
                                     @if (installation.IsEnabled)
                                     {
@@ -200,11 +222,11 @@
                 <div class="card">
                     <div class="card-body">
                         <h6 class="card-title">Quick Actions</h6>
-                        <div class="d-grid gap-2">
-                            <a href="/agents/@AgentId" class="btn btn-outline-secondary btn-sm">
-                                ← Back to Agent
-                            </a>
-                            @if (installation != null)
+                            <div class="d-grid gap-2">
+                                <a href="/agents/@AgentId" class="btn btn-outline-secondary btn-sm">
+                                    ← Back to Agent
+                                </a>
+                            @if (!hasAmbiguousInstallations && installation != null)
                             {
                                 <button class="btn btn-outline-primary btn-sm" @onclick="ToggleEnabledAsync">
                                     @(installation.IsEnabled ? "⏸ Disable" : "▶ Enable") Server
@@ -228,6 +250,8 @@
     private McpServer? server;
     private Agent? agent;
     private ServerInstallation? installation;
+    private List<ServerInstallation> matchingInstallations = [];
+    private bool hasAmbiguousInstallations = false;
     private Dictionary<string, string> agentConfiguration = new();
     private Dictionary<string, string> originalConfiguration = new();
     private bool configurationChanged = false;
@@ -253,7 +277,9 @@
         if (server != null && agent != null)
         {
             var installations = await InstallationManager.GetInstallationsByAgentIdAsync(AgentId);
-            installation = installations.FirstOrDefault(i => i.ServerId == ServerId);
+            matchingInstallations = installations.Where(i => i.ServerId == ServerId).ToList();
+            hasAmbiguousInstallations = matchingInstallations.Count > 1;
+            installation = matchingInstallations.Count == 1 ? matchingInstallations[0] : null;
 
             if (installation != null)
             {
@@ -268,6 +294,12 @@
                 originalConfiguration = new Dictionary<string, string>(agentConfiguration);
                 isMatchingGlobal = ConfigurationService.DoesAgentConfigMatchGlobal(server, installation);
             }
+        }
+        else
+        {
+            matchingInstallations = [];
+            hasAmbiguousInstallations = false;
+            installation = null;
         }
 
         configurationChanged = false;

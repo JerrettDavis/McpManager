@@ -27,7 +27,12 @@ public class AgentManager(IEnumerable<IAgentConnector> connectors) : IAgentManag
                 }
 
                 configuredServersList ??= (await connector.GetConfiguredServerIdsAsync())
-                    .Select(serverId => new ConfiguredAgentServer { ServerId = serverId, IsEnabled = true })
+                    .Select(serverId => new ConfiguredAgentServer
+                    {
+                        ConfiguredServerKey = serverId,
+                        ServerId = serverId,
+                        IsEnabled = true
+                    })
                     .ToList();
 
                 agents.Add(new Agent
@@ -54,7 +59,9 @@ public class AgentManager(IEnumerable<IAgentConnector> connectors) : IAgentManag
     public async Task<IEnumerable<string>> GetAgentServerIdsAsync(string agentId)
     {
         var agent = await GetAgentByIdAsync(agentId);
-        return agent?.ConfiguredServerIds ?? Enumerable.Empty<string>();
+        return agent?.ConfiguredServers
+            .Select(server => string.IsNullOrWhiteSpace(server.ConfiguredServerKey) ? server.ServerId : server.ConfiguredServerKey)
+            ?? Enumerable.Empty<string>();
     }
 
     private static string GetAgentDisplayName(AgentType agentType)
@@ -62,6 +69,7 @@ public class AgentManager(IEnumerable<IAgentConnector> connectors) : IAgentManag
         return agentType switch
         {
             AgentType.Claude => "Claude Desktop",
+            AgentType.ClaudeCode => "Claude Code",
             AgentType.GitHubCopilot => "GitHub Copilot",
             AgentType.OpenAICodex => "OpenAI Codex",
             AgentType.OpenClaw => "OpenClaw",

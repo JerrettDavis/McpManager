@@ -142,6 +142,28 @@ public class AgentManagerTests
     }
 
     [Fact]
+    public async Task GetAgentServerIdsAsync_ReturnsConfiguredKeysWhenAvailable()
+    {
+        var mockConnector = new Mock<IAgentConnector>();
+        mockConnector.Setup(c => c.AgentType).Returns(AgentType.ClaudeCode);
+        mockConnector.Setup(c => c.IsAgentInstalledAsync()).ReturnsAsync(true);
+        mockConnector.Setup(c => c.GetConfigurationPathAsync()).ReturnsAsync("/path");
+        mockConnector.Setup(c => c.GetConfiguredServersAsync()).ReturnsAsync(new List<ConfiguredAgentServer>
+        {
+            new() { ConfiguredServerKey = "project:/repo-a::tinybdd", ServerId = "tinybdd", IsEnabled = true },
+            new() { ConfiguredServerKey = "project:/repo-b::tinybdd", ServerId = "tinybdd", IsEnabled = true }
+        });
+
+        var agentManager = new AgentManager([mockConnector.Object]);
+
+        var serverIds = (await agentManager.GetAgentServerIdsAsync("claudecode")).ToList();
+
+        Assert.Equal(2, serverIds.Count);
+        Assert.Contains("project:/repo-a::tinybdd", serverIds);
+        Assert.Contains("project:/repo-b::tinybdd", serverIds);
+    }
+
+    [Fact]
     public async Task DetectInstalledAgentsAsync_UsesOpenClawDisplayName()
     {
         // Arrange
@@ -167,5 +189,22 @@ public class AgentManagerTests
         Assert.Equal("/path/to/openclaw.json", agent.ConfigPath);
         Assert.Single(agent.ConfiguredServerIds);
         Assert.False(agent.ConfiguredServers.Single().IsEnabled);
+    }
+
+    [Fact]
+    public async Task DetectInstalledAgentsAsync_UsesClaudeCodeDisplayName()
+    {
+        var mockConnector = new Mock<IAgentConnector>();
+        mockConnector.Setup(c => c.AgentType).Returns(AgentType.ClaudeCode);
+        mockConnector.Setup(c => c.IsAgentInstalledAsync()).ReturnsAsync(true);
+        mockConnector.Setup(c => c.GetConfigurationPathAsync()).ReturnsAsync("/path/to/.claude.json");
+        mockConnector.Setup(c => c.GetConfiguredServersAsync()).ReturnsAsync([]);
+
+        var agentManager = new AgentManager([mockConnector.Object]);
+
+        var agent = Assert.Single(await agentManager.DetectInstalledAgentsAsync());
+
+        Assert.Equal("claudecode", agent.Id);
+        Assert.Equal("Claude Code", agent.Name);
     }
 }

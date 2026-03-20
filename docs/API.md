@@ -52,7 +52,7 @@ Gets a specific agent by ID. Returns null if not found.
 ```csharp
 Task<IEnumerable<string>> GetAgentServerIdsAsync(string agentId)
 ```
-Returns list of server IDs configured for the specified agent.
+Returns the configured server identity values for the specified agent. For scoped agent configs, this may be the connector-specific configured key rather than only the display server ID.
 
 ### IAgentConnector
 

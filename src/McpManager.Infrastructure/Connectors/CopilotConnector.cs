@@ -1,6 +1,7 @@
 using McpManager.Core.Interfaces;
 using McpManager.Core.Models;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace McpManager.Infrastructure.Connectors;
 
@@ -8,16 +9,29 @@ namespace McpManager.Infrastructure.Connectors;
 /// Connector for GitHub Copilot.
 /// Handles Copilot-specific configuration and MCP server management.
 /// </summary>
-public class CopilotConnector : IAgentConnector
+public class CopilotConnector(
+    Func<string>? homeDirectoryResolver = null,
+    Func<string, bool>? fileExists = null,
+    Func<string, bool>? directoryExists = null,
+    Func<string, Task<string>>? readAllTextAsync = null,
+    Func<string, string, Task>? writeAllTextAsync = null) : IAgentConnector
 {
+    private readonly Func<string> _homeDirectoryResolver = homeDirectoryResolver ??
+        (() => Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
+    private readonly Func<string, bool> _fileExists = fileExists ?? File.Exists;
+    private readonly Func<string, bool> _directoryExists = directoryExists ?? Directory.Exists;
+    private readonly Func<string, Task<string>> _readAllTextAsync = readAllTextAsync ?? (path => File.ReadAllTextAsync(path));
+    private readonly Func<string, string, Task> _writeAllTextAsync = writeAllTextAsync ?? ((path, content) => File.WriteAllTextAsync(path, content));
+
     public AgentType AgentType => AgentType.GitHubCopilot;
 
     public Task<bool> IsAgentInstalledAsync()
     {
-        // Check for GitHub Copilot installation via VS Code
         var configPath = GetCopilotConfigPath();
-        var vsCodePath = Path.GetDirectoryName(Path.GetDirectoryName(configPath));
-        return Task.FromResult(Directory.Exists(vsCodePath));
+        var copilotDirectory = Path.GetDirectoryName(configPath);
+        return Task.FromResult(
+            _fileExists(configPath) ||
+            (!string.IsNullOrWhiteSpace(copilotDirectory) && _directoryExists(copilotDirectory)));
     }
 
     public Task<string> GetConfigurationPathAsync()
@@ -34,25 +48,17 @@ public class CopilotConnector : IAgentConnector
     public async Task<IEnumerable<ConfiguredAgentServer>> GetConfiguredServersAsync()
     {
         var configPath = GetCopilotConfigPath();
-        if (!File.Exists(configPath))
+        if (!_fileExists(configPath))
         {
             return [];
         }
 
         try
         {
-            var json = await File.ReadAllTextAsync(configPath);
+            var json = await _readAllTextAsync(configPath);
             var config = JsonSerializer.Deserialize<CopilotConfig>(json);
 
-            return config?.McpServers?.Select(server => new ConfiguredAgentServer
-            {
-                ConfiguredServerKey = server.Key,
-                ServerId = server.Key,
-                IsEnabled = !string.Equals(
-                    server.Value.GetValueOrDefault("enabled"),
-                    "false",
-                    StringComparison.OrdinalIgnoreCase)
-            }).ToList() ?? [];
+            return config?.McpServers?.Select(server => CreateConfiguredServer(server.Key, server.Value)).ToList() ?? [];
         }
         catch
         {
@@ -65,9 +71,9 @@ public class CopilotConnector : IAgentConnector
         var configPath = GetCopilotConfigPath();
         CopilotConfig copilotConfig;
 
-        if (File.Exists(configPath))
+        if (_fileExists(configPath))
         {
-            var json = await File.ReadAllTextAsync(configPath);
+            var json = await _readAllTextAsync(configPath);
             copilotConfig = JsonSerializer.Deserialize<CopilotConfig>(json) ?? new CopilotConfig();
         }
         else
@@ -76,11 +82,11 @@ public class CopilotConnector : IAgentConnector
             Directory.CreateDirectory(Path.GetDirectoryName(configPath)!);
         }
 
-        copilotConfig.McpServers ??= new Dictionary<string, Dictionary<string, string>>();
-        copilotConfig.McpServers[serverId] = config ?? new Dictionary<string, string>();
+        copilotConfig.McpServers ??= new Dictionary<string, JsonElement>();
+        copilotConfig.McpServers[serverId] = CreateServerConfigElement(config);
 
         var updatedJson = JsonSerializer.Serialize(copilotConfig, new JsonSerializerOptions { WriteIndented = true });
-        await File.WriteAllTextAsync(configPath, updatedJson);
+        await _writeAllTextAsync(configPath, updatedJson);
 
         return true;
     }
@@ -88,12 +94,12 @@ public class CopilotConnector : IAgentConnector
     public async Task<bool> RemoveServerFromAgentAsync(string serverId)
     {
         var configPath = GetCopilotConfigPath();
-        if (!File.Exists(configPath))
+        if (!_fileExists(configPath))
         {
             return false;
         }
 
-        var json = await File.ReadAllTextAsync(configPath);
+        var json = await _readAllTextAsync(configPath);
         var copilotConfig = JsonSerializer.Deserialize<CopilotConfig>(json);
 
         if (copilotConfig?.McpServers == null || !copilotConfig.McpServers.ContainsKey(serverId))
@@ -104,7 +110,7 @@ public class CopilotConnector : IAgentConnector
         copilotConfig.McpServers.Remove(serverId);
 
         var updatedJson = JsonSerializer.Serialize(copilotConfig, new JsonSerializerOptions { WriteIndented = true });
-        await File.WriteAllTextAsync(configPath, updatedJson);
+        await _writeAllTextAsync(configPath, updatedJson);
 
         return true;
     }
@@ -112,12 +118,12 @@ public class CopilotConnector : IAgentConnector
     public async Task<bool> SetServerEnabledAsync(string serverId, bool enabled)
     {
         var configPath = GetCopilotConfigPath();
-        if (!File.Exists(configPath))
+        if (!_fileExists(configPath))
         {
             return false;
         }
 
-        var json = await File.ReadAllTextAsync(configPath);
+        var json = await _readAllTextAsync(configPath);
         var copilotConfig = JsonSerializer.Deserialize<CopilotConfig>(json);
 
         if (copilotConfig?.McpServers == null || !copilotConfig.McpServers.ContainsKey(serverId))
@@ -125,24 +131,137 @@ public class CopilotConnector : IAgentConnector
             return false;
         }
 
-        copilotConfig.McpServers[serverId]["enabled"] = enabled.ToString().ToLower();
+        var existingConfig = copilotConfig.McpServers[serverId];
+        if (existingConfig.ValueKind == JsonValueKind.Object)
+        {
+            var rawProperties = GetRawProperties(existingConfig);
+            rawProperties["enabled"] = JsonSerializer.SerializeToElement(enabled);
+            copilotConfig.McpServers[serverId] = JsonSerializer.SerializeToElement(rawProperties);
+        }
+        else if (existingConfig.ValueKind is JsonValueKind.True or JsonValueKind.False)
+        {
+            copilotConfig.McpServers[serverId] = JsonSerializer.SerializeToElement(enabled);
+        }
+        else
+        {
+            return false;
+        }
 
         var updatedJson = JsonSerializer.Serialize(copilotConfig, new JsonSerializerOptions { WriteIndented = true });
-        await File.WriteAllTextAsync(configPath, updatedJson);
+        await _writeAllTextAsync(configPath, updatedJson);
 
         return true;
     }
 
-    private static string GetCopilotConfigPath()
+    private string GetCopilotConfigPath()
     {
-        var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        return OperatingSystem.IsWindows()
-            ? Path.Combine(userProfile, ".vscode", "mcp", "config.json")
-            : Path.Combine(userProfile, ".vscode", "mcp", "config.json");
+        return Path.Combine(_homeDirectoryResolver(), ".copilot", "mcp-config.json");
     }
 
     private class CopilotConfig
     {
-        public Dictionary<string, Dictionary<string, string>>? McpServers { get; set; }
+        [JsonPropertyName("mcpServers")]
+        public Dictionary<string, JsonElement>? McpServers { get; set; }
+    }
+
+    private static JsonElement CreateServerConfigElement(Dictionary<string, string>? config)
+    {
+        var rawProperties = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
+        if (config == null)
+        {
+            return JsonSerializer.SerializeToElement(rawProperties);
+        }
+
+        foreach (var (key, value) in config)
+        {
+            rawProperties[key] = ParseJsonElement(value);
+        }
+
+        return JsonSerializer.SerializeToElement(rawProperties);
+    }
+
+    private static ConfiguredAgentServer CreateConfiguredServer(string serverId, JsonElement serverConfig)
+    {
+        if (serverConfig.ValueKind == JsonValueKind.Object)
+        {
+            var rawProperties = GetRawProperties(serverConfig);
+            return new ConfiguredAgentServer
+            {
+                ConfiguredServerKey = serverId,
+                ServerId = serverId,
+                IsEnabled = !IsDisabled(rawProperties),
+                RawConfig = CreateRawConfig(rawProperties)
+            };
+        }
+
+        return new ConfiguredAgentServer
+        {
+            ConfiguredServerKey = serverId,
+            ServerId = serverId,
+            IsEnabled = serverConfig.ValueKind != JsonValueKind.False,
+            RawConfig = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["$raw"] = serverConfig.GetRawText()
+            }
+        };
+    }
+
+    private static Dictionary<string, JsonElement> GetRawProperties(JsonElement serverConfig)
+    {
+        return serverConfig.EnumerateObject()
+            .ToDictionary(property => property.Name, property => property.Value, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static Dictionary<string, string> CreateRawConfig(Dictionary<string, JsonElement> rawProperties)
+    {
+        var rawConfig = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (key, value) in rawProperties)
+        {
+            rawConfig[key] = value.ValueKind == JsonValueKind.String
+                ? value.GetString() ?? string.Empty
+                : value.GetRawText();
+        }
+
+        return rawConfig;
+    }
+
+    private static bool IsDisabled(Dictionary<string, JsonElement> rawProperties)
+    {
+        if (!rawProperties.TryGetValue("enabled", out var enabledValue))
+        {
+            return false;
+        }
+
+        return enabledValue.ValueKind switch
+        {
+            JsonValueKind.False => true,
+            JsonValueKind.True => false,
+            JsonValueKind.String when bool.TryParse(enabledValue.GetString(), out var enabled) => !enabled,
+            _ => false
+        };
+    }
+
+    private static JsonElement ParseJsonElement(string value)
+    {
+        var trimmed = value.Trim();
+        if ((trimmed.StartsWith("{", StringComparison.Ordinal) && trimmed.EndsWith("}", StringComparison.Ordinal)) ||
+            (trimmed.StartsWith("[", StringComparison.Ordinal) && trimmed.EndsWith("]", StringComparison.Ordinal)))
+        {
+            try
+            {
+                return JsonSerializer.SerializeToElement(JsonSerializer.Deserialize<JsonElement>(trimmed));
+            }
+            catch
+            {
+                return JsonSerializer.SerializeToElement(value);
+            }
+        }
+
+        if (bool.TryParse(trimmed, out var boolValue))
+        {
+            return JsonSerializer.SerializeToElement(boolValue);
+        }
+
+        return JsonSerializer.SerializeToElement(value);
     }
 }

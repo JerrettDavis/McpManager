@@ -155,17 +155,22 @@
                             }
                         </dd>
 
-                        <dt class="col-sm-3">Configured Server IDs (from config file)</dt>
+                        <dt class="col-sm-3">Configured Servers (from config file)</dt>
                         <dd class="col-sm-9">
-                            @if (agent.ConfiguredServerIds.Any())
+                            @if (agent.ConfiguredServers.Any())
                             {
                                 <ul class="list-unstyled mb-0">
-                                    @foreach (var serverId in agent.ConfiguredServerIds)
+                                    @foreach (var configuredServer in agent.ConfiguredServers)
                                     {
                                         <li>
-                                            <code>@serverId</code>
+                                            <code>@configuredServer.ServerId</code>
+                                            @if (!string.IsNullOrWhiteSpace(configuredServer.ConfiguredServerKey) &&
+                                                !string.Equals(configuredServer.ConfiguredServerKey, configuredServer.ServerId, StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                <span class="text-muted ms-2 small">(@configuredServer.ConfiguredServerKey)</span>
+                                            }
                                             @{
-                                                var server = installedServers.FirstOrDefault(s => s.Id == serverId);
+                                                var server = installedServers.FirstOrDefault(s => s.Id == configuredServer.ServerId);
                                                 if (server != null)
                                                 {
                                                     <span class="badge bg-success ms-2">Server Installed</span>
@@ -213,8 +218,10 @@
                         <dt class="col-sm-3">Sync Status</dt>
                         <dd class="col-sm-9">
                             @{
-                                var notTracked = agent.ConfiguredServerIds
-                                    .Where(id => !agentInstallations.Any(i => i.ServerId == id))
+                                var notTracked = agent.ConfiguredServers
+                                    .Where(server => !agentInstallations.Any(i =>
+                                        i.ServerId == server.ServerId &&
+                                        string.Equals(i.ConfiguredServerKey, server.ConfiguredServerKey, StringComparison.OrdinalIgnoreCase)))
                                     .ToList();
                             }
                             @if (!notTracked.Any())
@@ -225,9 +232,16 @@
                             {
                                 <span class="badge bg-warning">⚠ @notTracked.Count server(s) not tracked</span>
                                 <ul class="mt-2">
-                                    @foreach (var serverId in notTracked)
+                                    @foreach (var configuredServer in notTracked)
                                     {
-                                        <li><code>@serverId</code></li>
+                                        <li>
+                                            <code>@configuredServer.ServerId</code>
+                                            @if (!string.IsNullOrWhiteSpace(configuredServer.ConfiguredServerKey) &&
+                                                !string.Equals(configuredServer.ConfiguredServerKey, configuredServer.ServerId, StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                <span class="text-muted ms-2 small">(@configuredServer.ConfiguredServerKey)</span>
+                                            }
+                                        </li>
                                     }
                                 </ul>
                             }
@@ -481,17 +495,21 @@
 
             foreach (var agent in agents)
             {
-                foreach (var configServerId in agent.ConfiguredServerIds)
+                foreach (var configuredServer in agent.ConfiguredServers)
                 {
+                    var configuredServerKey = string.IsNullOrWhiteSpace(configuredServer.ConfiguredServerKey)
+                        ? configuredServer.ServerId
+                        : configuredServer.ConfiguredServerKey;
+
                     // Try exact ID match first
-                    var server = installedServers.FirstOrDefault(s => s.Id == configServerId);
-                    var actualServerId = configServerId;
+                    var server = installedServers.FirstOrDefault(s => s.Id == configuredServer.ServerId);
+                    var actualServerId = configuredServer.ServerId;
 
                     if (server == null)
                     {
                         // Try matching by name (case-insensitive)
                         var matchByName = installedServers.FirstOrDefault(s =>
-                            s.Name.Equals(configServerId, StringComparison.OrdinalIgnoreCase));
+                            s.Name.Equals(configuredServer.ServerId, StringComparison.OrdinalIgnoreCase));
 
                         if (matchByName != null)
                         {
@@ -506,15 +524,23 @@
 
                     // Check if installation record exists
                     var hasInstallation = installations.Any(i =>
-                        i.ServerId == actualServerId && i.AgentId == agent.Id);
+                        i.ServerId == actualServerId &&
+                        i.AgentId == agent.Id &&
+                        string.Equals(i.ConfiguredServerKey, configuredServerKey, StringComparison.OrdinalIgnoreCase));
 
                     if (!hasInstallation)
                     {
                         var installedServer = installedServers.FirstOrDefault(server => server.Id == actualServerId);
-                        await InstallationManager.AddServerToAgentAsync(
+                        await InstallationManager.TrackConfiguredServerAsync(
                             actualServerId,
                             agent.Id,
-                            installedServer?.Configuration == null ? null : new Dictionary<string, string>(installedServer.Configuration));
+                            configuredServer.IsEnabled,
+                            configuredServerKey,
+                            configuredServer.RawConfig.Any()
+                                ? new Dictionary<string, string>(configuredServer.RawConfig)
+                                : installedServer?.Configuration == null
+                                    ? null
+                                    : new Dictionary<string, string>(installedServer.Configuration));
                         createdCount++;
                     }
                 }
@@ -564,7 +590,7 @@
 
             foreach (var orphan in orphanedRecords)
             {
-                await InstallationManager.RemoveServerFromAgentAsync(orphan.ServerId, orphan.AgentId);
+                await InstallationManager.UntrackServerAsync(orphan.Id);
                 removedCount++;
             }
 

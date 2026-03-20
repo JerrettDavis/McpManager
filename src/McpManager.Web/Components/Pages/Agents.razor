@@ -63,23 +63,23 @@
 
                             <div class="mb-3">
                                 <strong>Configured Servers:</strong>
-                                @if (!agent.ConfiguredServerIds.Any())
+                                @if (!agent.ConfiguredServers.Any())
                                 {
                                     <p class="text-muted mb-0">No servers configured</p>
                                 }
                                 else
                                 {
                                     <div class="d-flex flex-wrap gap-1 mt-2">
-                                        @foreach (var serverId in agent.ConfiguredServerIds)
+                                        @foreach (var configuredServer in agent.ConfiguredServers)
                                         {
-                                            <span class="badge bg-info">@serverId</span>
+                                            <span class="badge bg-info">@configuredServer.ServerId</span>
                                         }
                                     </div>
                                 }
                             </div>
 
                             <div class="alert alert-info small mb-0">
-                                <strong>@agent.ConfiguredServerIds.Count</strong> server(s) configured
+                                <strong>@agent.ConfiguredServers.Count</strong> server(s) configured
                             </div>
                         </div>
                         <div class="card-footer bg-transparent">
