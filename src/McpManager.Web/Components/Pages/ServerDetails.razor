@@ -137,12 +137,14 @@
                                     <tbody>
                                         @foreach (var agent in agents)
                                         {
-                                            var installation = installations.FirstOrDefault(i => i.AgentId == agent.Id);
+                                            var agentInstallations = installations.Where(i => i.AgentId == agent.Id).ToList();
+                                            var installation = agentInstallations.Count == 1 ? agentInstallations[0] : null;
                                             var currentStatus = GetAgentStatus(agent.Id);
                                             var isSelected = selectedAgents.GetValueOrDefault(agent.Id, false);
                                             var newStatus = isSelected ? "Enabled" : "Not Added";
                                             var statusChanged = GetStatusChanged(agent.Id);
-                                            var isMatching = installation != null && ConfigurationService.DoesAgentConfigMatchGlobal(server, installation);
+                                            var allMatchGlobal = agentInstallations.Any() && agentInstallations.All(i => ConfigurationService.DoesAgentConfigMatchGlobal(server, i));
+                                            var hasMixedConfigurations = agentInstallations.Count > 1 && !allMatchGlobal;
                                             var currentAgentId = agent.Id; // Capture for lambda
 
                                             <tr class="@(statusChanged ? "table-warning" : "")">
@@ -157,11 +159,15 @@
                                                     <div class="small text-muted">@agent.Type</div>
                                                 </td>
                                                 <td>
-                                                    @if (installation == null)
+                                                    @if (!agentInstallations.Any())
                                                     {
                                                         <span class="badge bg-secondary">Not Added</span>
                                                     }
-                                                    else if (installation.IsEnabled)
+                                                    else if (currentStatus == "Mixed")
+                                                    {
+                                                        <span class="badge bg-info text-dark">⇄ Mixed</span>
+                                                    }
+                                                    else if (currentStatus == "Enabled")
                                                     {
                                                         <span class="badge bg-success">✓ Enabled</span>
                                                     }
@@ -188,9 +194,17 @@
                                                     }
                                                 </td>
                                                 <td>
-                                                    @if (installation != null)
+                                                    @if (hasMixedConfigurations)
                                                     {
-                                                        <ConfigurationStatusBadge IsMatching="@isMatching" />
+                                                        <span class="badge bg-warning text-dark">Mixed</span>
+                                                    }
+                                                    else if (installation != null)
+                                                    {
+                                                        <ConfigurationStatusBadge IsMatching="@allMatchGlobal" />
+                                                    }
+                                                    else if (agentInstallations.Count > 1)
+                                                    {
+                                                        <span class="badge bg-info text-dark">@agentInstallations.Count entries</span>
                                                     }
                                                     else
                                                     {
@@ -203,6 +217,12 @@
                                                         <a href="/agents/@agent.Id/servers/@Uri.EscapeDataString(server.Id)"
                                                            class="btn btn-sm btn-outline-primary">
                                                             ⚙️ Configure
+                                                        </a>
+                                                    }
+                                                    else if (agentInstallations.Count > 1)
+                                                    {
+                                                        <a href="/agents/@agent.Id" class="btn btn-sm btn-outline-secondary">
+                                                            View Agent
                                                         </a>
                                                     }
                                                     else

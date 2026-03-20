@@ -42,6 +42,10 @@ public class ConfigurationWorkflowTests
         
         mockClaudeConnector.Setup(c => c.AgentType).Returns(AgentType.Claude);
         mockCopilotConnector.Setup(c => c.AgentType).Returns(AgentType.GitHubCopilot);
+        mockClaudeConnector.Setup(c => c.AddServerToAgentAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()))
+            .ReturnsAsync(true);
+        mockCopilotConnector.Setup(c => c.AddServerToAgentAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()))
+            .ReturnsAsync(true);
         
         var connectors = new List<IAgentConnector> { mockClaudeConnector.Object, mockCopilotConnector.Object };
         var installationManager = new InstallationManager(serverManager, mockAgentManager.Object, connectors, []);
@@ -151,6 +155,8 @@ public class ConfigurationWorkflowTests
         var mockAgentManager = new Mock<IAgentManager>();
         var mockConnector = new Mock<IAgentConnector>();
         mockConnector.Setup(c => c.AgentType).Returns(AgentType.Claude);
+        mockConnector.Setup(c => c.AddServerToAgentAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()))
+            .ReturnsAsync(true);
         
         var connectors = new List<IAgentConnector> { mockConnector.Object };
         var installationManager = new InstallationManager(serverManager, mockAgentManager.Object, connectors, []);
@@ -257,6 +263,8 @@ public class ConfigurationWorkflowTests
         var mockAgentManager = new Mock<IAgentManager>();
         var mockConnector = new Mock<IAgentConnector>();
         mockConnector.Setup(c => c.AgentType).Returns(AgentType.Claude);
+        mockConnector.Setup(c => c.AddServerToAgentAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()))
+            .ReturnsAsync(true);
         
         var connectors = new List<IAgentConnector> { mockConnector.Object };
         var installationManager = new InstallationManager(serverManager, mockAgentManager.Object, connectors, []);

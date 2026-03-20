@@ -46,9 +46,16 @@ public class Agent
     /// </summary>
     public List<string> ConfiguredServerIds
     {
-        get => _configuredServers.Select(server => server.ServerId).ToList();
+        get => _configuredServers
+            .Select(server => string.IsNullOrWhiteSpace(server.ConfiguredServerKey) ? server.ServerId : server.ConfiguredServerKey)
+            .ToList();
         set => _configuredServers = value?
-            .Select(serverId => new ConfiguredAgentServer { ServerId = serverId, IsEnabled = true })
+            .Select(serverId => new ConfiguredAgentServer
+            {
+                ConfiguredServerKey = serverId,
+                ServerId = serverId,
+                IsEnabled = true
+            })
             .ToList() ?? [];
     }
 }
