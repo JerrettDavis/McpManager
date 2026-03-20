@@ -13,7 +13,7 @@ A complete CI/CD pipeline has been implemented using GitHub Actions, enabling au
 **Features**:
 - Automated build and testing
 - Code coverage collection with XPlat Code Coverage
-- Codecov integration for coverage reporting
+- Codecov integration for coverage reporting via GitHub OIDC
 - Artifact uploads for test results
 
 ### 2. CodeQL Workflow (`.github/workflows/codeql.yml`)
@@ -201,6 +201,7 @@ Auto-labeling and reviewer assignment configured.
 - Project and patch coverage tracking
 - Comment on PRs with coverage changes
 - Exclude tests and build artifacts
+- CI uploads coverage to Codecov using GitHub Actions OIDC instead of a repository upload token
 
 ## How to Use
 
@@ -245,6 +246,7 @@ All workflows use explicit permission blocks following security best practices:
 ```yaml
 permissions:
   contents: read        # Most workflows
+  id-token: write       # CI coverage upload via Codecov OIDC
   
 # Or more specific:
 permissions:
