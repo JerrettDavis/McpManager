@@ -49,6 +49,15 @@ jobs:
       run: dotnet test --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
     
     - name: Upload coverage reports to Codecov
+      if: ${{ secrets.CODECOV_TOKEN != '' }}
+      uses: codecov/codecov-action@v5
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        directory: ./coverage
+        fail_ci_if_error: true
+    
+    - name: Upload coverage reports to Codecov (OIDC fallback)
+      if: ${{ secrets.CODECOV_TOKEN == '' }}
       uses: codecov/codecov-action@v5
       with:
         use_oidc: true
