@@ -33,6 +33,11 @@ public class Agent
     public string ConfigPath { get; set; } = string.Empty;
 
     /// <summary>
+    /// Optional read-only live runtime catalog for agents that expose one.
+    /// </summary>
+    public AgentRuntimeCatalog? RuntimeCatalog { get; set; }
+
+    /// <summary>
     /// MCP servers currently configured for this agent, including enabled state.
     /// </summary>
     public List<ConfiguredAgentServer> ConfiguredServers
@@ -69,6 +74,41 @@ public class ConfiguredAgentServer
     public string ServerId { get; set; } = string.Empty;
     public bool IsEnabled { get; set; } = true;
     public Dictionary<string, string> RawConfig { get; set; } = new();
+}
+
+/// <summary>
+/// Represents a read-only runtime catalog exposed by a live agent backend.
+/// </summary>
+public class AgentRuntimeCatalog
+{
+    public string AgentId { get; set; } = string.Empty;
+    public string? ErrorMessage { get; set; }
+    public List<AgentRuntimeGroup> Groups { get; set; } = [];
+}
+
+/// <summary>
+/// Represents a group of runtime tools.
+/// </summary>
+public class AgentRuntimeGroup
+{
+    public string Id { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public string Source { get; set; } = string.Empty;
+    public string? PluginId { get; set; }
+    public List<AgentRuntimeTool> Tools { get; set; } = [];
+}
+
+/// <summary>
+/// Represents a single live runtime tool entry.
+/// </summary>
+public class AgentRuntimeTool
+{
+    public string Id { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string Source { get; set; } = string.Empty;
+    public string? PluginId { get; set; }
+    public bool Optional { get; set; }
 }
 
 /// <summary>

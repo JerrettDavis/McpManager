@@ -16,7 +16,7 @@ public interface IAgentManager
     /// <summary>
     /// Gets a specific agent by ID.
     /// </summary>
-    Task<Agent?> GetAgentByIdAsync(string agentId);
+    Task<Agent?> GetAgentByIdAsync(string agentId, bool includeRuntimeCatalog = false);
 
     /// <summary>
     /// Gets all MCP servers configured for a specific agent.

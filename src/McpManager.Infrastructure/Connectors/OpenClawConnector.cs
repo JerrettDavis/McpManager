@@ -1,5 +1,7 @@
 using McpManager.Core.Interfaces;
 using McpManager.Core.Models;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -7,41 +9,46 @@ namespace McpManager.Infrastructure.Connectors;
 
 /// <summary>
 /// Connector for OpenClaw (https://openclaw.ai).
-/// Handles OpenClaw-specific configuration and MCP server management.
-/// OpenClaw stores MCP servers under the nested mcp.servers object.
+/// Handles file-backed OpenClaw-specific configuration and MCP server management.
+/// OpenClaw stores MCP servers under the nested mcp.servers object, but installations
+/// may have multiple config files across default, legacy, or profile-specific state roots.
 /// </summary>
 public class OpenClawConnector(
     Func<string, string?>? environmentLookup = null,
     Func<string>? homeDirectoryResolver = null,
     Func<string, bool>? fileExists = null,
-    Func<string, bool>? directoryExists = null) : IAgentConnector
+    Func<string, bool>? directoryExists = null,
+    Func<string, string, CancellationToken, Task<(int ExitCode, string StandardOutput, string StandardError)>>? processRunner = null) : IAgentConnector, IAgentRuntimeConnector
 {
     private const string ConfigFileName = "openclaw.json";
+    private const string ConfigScopePrefix = "config:";
+    private const int RuntimeCatalogTimeoutMilliseconds = 10_000;
     private static readonly string[] LegacyStateDirectoryNames = [".clawdbot", ".moldbot", ".moltbot"];
     private static readonly string[] LegacyConfigFileNames = ["clawdbot.json", "moldbot.json", "moltbot.json"];
+    private static readonly string[] ProfileStateDirectoryPrefixes = [".openclaw-", ".clawdbot-", ".moldbot-", ".moltbot-"];
     private readonly Func<string, string?> _environmentLookup = environmentLookup ?? Environment.GetEnvironmentVariable;
     private readonly Func<string> _homeDirectoryResolver = homeDirectoryResolver ??
         (() => Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
     private readonly Func<string, bool> _fileExists = fileExists ?? File.Exists;
     private readonly Func<string, bool> _directoryExists = directoryExists ?? Directory.Exists;
+    private readonly Func<string, string, CancellationToken, Task<(int ExitCode, string StandardOutput, string StandardError)>> _processRunner = processRunner ?? RunProcessAsync;
 
     public AgentType AgentType => AgentType.OpenClaw;
 
     public Task<bool> IsAgentInstalledAsync()
     {
-        var configPath = ResolveConfigPath();
-        if (_fileExists(configPath))
+        if (ResolveCandidateConfigPaths().Any(_fileExists))
         {
             return Task.FromResult(true);
         }
 
-        var knownDirectories = ResolveStateDirectories().ToList();
+        var knownDirectories = EnumerateStateDirectories().ToList();
         if (knownDirectories.Any(_directoryExists))
         {
             return Task.FromResult(true);
         }
 
-        var configDirectory = Path.GetDirectoryName(configPath);
+        var configDirectory = Path.GetDirectoryName(ResolveConfigPath());
         return Task.FromResult(!string.IsNullOrWhiteSpace(configDirectory) && _directoryExists(configDirectory));
     }
 
@@ -56,58 +63,113 @@ public class OpenClawConnector(
         return configuredServers.Select(server => server.ServerId).ToList();
     }
 
-    public async Task<IEnumerable<ConfiguredAgentServer>> GetConfiguredServersAsync()
+    public async Task<AgentRuntimeCatalog?> GetRuntimeCatalogAsync()
     {
-        var configPath = ResolveConfigPath();
-        if (!_fileExists(configPath))
-        {
-            return [];
-        }
+        using var timeout = new CancellationTokenSource(RuntimeCatalogTimeoutMilliseconds);
 
         try
         {
-            var root = await ReadConfigAsync(configPath);
-            var servers = GetServersObject(root);
-            if (servers == null)
+            var (exitCode, standardOutput, standardError) = await _processRunner(
+                ResolveOpenClawCliExecutable(),
+                "gateway call tools.catalog --json --timeout 10000",
+                timeout.Token);
+
+            if (exitCode != 0)
             {
-                return [];
+                return CreateRuntimeCatalogError($"OpenClaw runtime query failed: {SummarizeProcessError(standardError, standardOutput)}");
             }
 
-            return servers.Select(property => new ConfiguredAgentServer
+            if (string.IsNullOrWhiteSpace(standardOutput))
             {
-                ConfiguredServerKey = property.Key,
-                ServerId = ResolveCanonicalServerId(property.Key, property.Value),
-                IsEnabled = IsServerEnabled(property.Value),
-                RawConfig = property.Value is JsonObject serverConfig
-                    ? ExtractRawConfig(serverConfig)
-                    : new Dictionary<string, string>()
-            }).ToList();
+                return CreateRuntimeCatalogError("OpenClaw runtime query returned no output.");
+            }
+
+            return ParseRuntimeCatalog(standardOutput);
         }
-        catch (JsonException)
+        catch (OperationCanceledException) when (timeout.IsCancellationRequested)
         {
-            return [];
+            return CreateRuntimeCatalogError("OpenClaw runtime query timed out.");
         }
-        catch (InvalidOperationException)
+        catch (Win32Exception ex)
         {
-            return [];
+            return CreateRuntimeCatalogError($"OpenClaw CLI is unavailable: {ex.Message}");
         }
-        catch (IOException)
+        catch (InvalidOperationException ex)
         {
-            return [];
+            return CreateRuntimeCatalogError($"OpenClaw runtime query failed: {ex.Message}");
         }
-        catch (UnauthorizedAccessException)
+        catch (IOException ex)
         {
-            return [];
+            return CreateRuntimeCatalogError($"OpenClaw runtime query failed: {ex.Message}");
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            return CreateRuntimeCatalogError($"OpenClaw runtime query failed: {ex.Message}");
+        }
+        catch (JsonException ex)
+        {
+            return CreateRuntimeCatalogError($"OpenClaw runtime output was invalid JSON: {ex.Message}");
+        }
+    }
+
+    public async Task<IEnumerable<ConfiguredAgentServer>> GetConfiguredServersAsync()
+    {
+        var primaryConfigPath = ResolveConfigPath();
+        var configuredServers = new Dictionary<string, ConfiguredAgentServer>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var configPath in ResolveCandidateConfigPaths().Where(_fileExists))
+        {
+            try
+            {
+                var root = await ReadConfigAsync(configPath);
+                var servers = GetServersObject(root);
+                if (servers == null)
+                {
+                    continue;
+                }
+
+                foreach (var property in servers)
+                {
+                    var configuredServerKey = BuildConfiguredServerKey(primaryConfigPath, configPath, property.Key);
+                    configuredServers[configuredServerKey] = new ConfiguredAgentServer
+                    {
+                        ConfiguredServerKey = configuredServerKey,
+                        ServerId = ResolveCanonicalServerId(property.Key, property.Value),
+                        IsEnabled = IsServerEnabled(property.Value),
+                        RawConfig = property.Value is JsonObject serverConfig
+                            ? ExtractRawConfig(serverConfig)
+                            : new Dictionary<string, string>()
+                    };
+                }
+            }
+            catch (JsonException)
+            {
+                continue;
+            }
+            catch (InvalidOperationException)
+            {
+                continue;
+            }
+            catch (IOException)
+            {
+                continue;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                continue;
+            }
+        }
+
+        return configuredServers.Values.ToList();
     }
 
     public async Task<bool> AddServerToAgentAsync(string serverId, Dictionary<string, string>? config = null)
     {
-        var configPath = ResolveConfigPath();
+        var (configPath, configuredServerKey) = ResolveConfigTarget(serverId);
         var root = await ReadOrCreateConfigAsync(configPath);
         var servers = EnsureServersObject(root);
 
-        servers[serverId] = BuildServerConfig(serverId, config);
+        servers[configuredServerKey] = BuildServerConfig(configuredServerKey, config);
 
         await WriteConfigAsync(configPath, root);
         return true;
@@ -115,7 +177,7 @@ public class OpenClawConnector(
 
     public async Task<bool> RemoveServerFromAgentAsync(string serverId)
     {
-        var configPath = ResolveConfigPath();
+        var (configPath, configuredServerKey) = ResolveConfigTarget(serverId);
         if (!_fileExists(configPath))
         {
             return false;
@@ -123,7 +185,7 @@ public class OpenClawConnector(
 
         var root = await ReadConfigAsync(configPath);
         var servers = GetServersObject(root);
-        if (servers == null || !servers.Remove(serverId))
+        if (servers == null || !servers.Remove(configuredServerKey))
         {
             return false;
         }
@@ -135,7 +197,7 @@ public class OpenClawConnector(
 
     public async Task<bool> SetServerEnabledAsync(string serverId, bool enabled)
     {
-        var configPath = ResolveConfigPath();
+        var (configPath, configuredServerKey) = ResolveConfigTarget(serverId);
         if (!_fileExists(configPath))
         {
             return false;
@@ -143,7 +205,7 @@ public class OpenClawConnector(
 
         var root = await ReadConfigAsync(configPath);
         var servers = GetServersObject(root);
-        if (servers == null || servers[serverId] is not JsonObject serverConfig)
+        if (servers == null || servers[configuredServerKey] is not JsonObject serverConfig)
         {
             return false;
         }
@@ -163,44 +225,109 @@ public class OpenClawConnector(
 
     private string ResolveConfigPath()
     {
+        var existing = ResolveCandidateConfigPaths().FirstOrDefault(_fileExists);
+        if (!string.IsNullOrWhiteSpace(existing))
+        {
+            return existing;
+        }
+
+        var configuredStateDir = GetEnvironmentValue("OPENCLAW_STATE_DIR") ?? GetEnvironmentValue("CLAWDBOT_STATE_DIR");
+        if (!string.IsNullOrWhiteSpace(configuredStateDir))
+        {
+            return Path.Combine(ExpandHomePath(configuredStateDir), ConfigFileName);
+        }
+
+        return Path.Combine(ResolveDefaultStateDirectory(), ConfigFileName);
+    }
+
+    private static string ResolveOpenClawCliExecutable()
+    {
+        return OperatingSystem.IsWindows() ? "openclaw.cmd" : "openclaw";
+    }
+
+    private IEnumerable<string> ResolveCandidateConfigPaths()
+    {
+        var seenPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var path in EnumerateConfigPaths())
+        {
+            if (seenPaths.Add(path))
+            {
+                yield return path;
+            }
+        }
+    }
+
+    private IEnumerable<string> EnumerateConfigPaths()
+    {
         var explicitConfigPath = GetEnvironmentValue("OPENCLAW_CONFIG_PATH") ?? GetEnvironmentValue("CLAWDBOT_CONFIG_PATH");
         if (!string.IsNullOrWhiteSpace(explicitConfigPath))
         {
-            return ExpandHomePath(explicitConfigPath);
+            yield return ExpandHomePath(explicitConfigPath);
         }
 
         var configuredStateDir = GetEnvironmentValue("OPENCLAW_STATE_DIR") ?? GetEnvironmentValue("CLAWDBOT_STATE_DIR");
         if (!string.IsNullOrWhiteSpace(configuredStateDir))
         {
             var resolvedStateDir = ExpandHomePath(configuredStateDir);
-            var candidates = BuildConfigCandidates(resolvedStateDir).ToList();
-            var existingCandidate = candidates.FirstOrDefault(_fileExists);
-            return existingCandidate ?? Path.Combine(resolvedStateDir, ConfigFileName);
+            foreach (var candidate in EnumerateConfigPathsForStateDirectory(resolvedStateDir))
+            {
+                yield return candidate;
+            }
         }
 
-        var defaultCandidates = ResolveDefaultConfigCandidates().ToList();
-        var existing = defaultCandidates.FirstOrDefault(_fileExists);
-        return existing ?? Path.Combine(ResolveDefaultStateDirectory(), ConfigFileName);
-    }
-
-    private IEnumerable<string> ResolveDefaultConfigCandidates()
-    {
-        foreach (var stateDirectory in ResolveStateDirectories())
+        foreach (var stateDirectory in EnumerateStateDirectories())
         {
-            foreach (var candidate in BuildConfigCandidates(stateDirectory))
+            foreach (var candidate in EnumerateConfigPathsForStateDirectory(stateDirectory))
             {
                 yield return candidate;
             }
         }
     }
 
-    private IEnumerable<string> ResolveStateDirectories()
+    private IEnumerable<string> EnumerateStateDirectories()
     {
         yield return ResolveDefaultStateDirectory();
 
         foreach (var legacyDirectory in LegacyStateDirectoryNames)
         {
             yield return Path.Combine(_homeDirectoryResolver(), legacyDirectory);
+        }
+
+        foreach (var profileStateDirectory in EnumerateProfileStateDirectories())
+        {
+            yield return profileStateDirectory;
+        }
+    }
+
+    private IEnumerable<string> EnumerateProfileStateDirectories()
+    {
+        var homeDirectory = _homeDirectoryResolver();
+        if (!_directoryExists(homeDirectory))
+        {
+            yield break;
+        }
+
+        foreach (var prefix in ProfileStateDirectoryPrefixes)
+        {
+            IEnumerable<string> matches;
+            try
+            {
+                matches = Directory.EnumerateDirectories(homeDirectory, $"{prefix}*", SearchOption.TopDirectoryOnly);
+            }
+            catch (IOException)
+            {
+                continue;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                continue;
+            }
+
+            foreach (var match in matches)
+            {
+                yield return match;
+            }
         }
     }
 
@@ -211,6 +338,38 @@ public class OpenClawConnector(
         foreach (var legacyFileName in LegacyConfigFileNames)
         {
             yield return Path.Combine(stateDirectory, legacyFileName);
+        }
+    }
+
+    private IEnumerable<string> EnumerateConfigPathsForStateDirectory(string stateDirectory)
+    {
+        foreach (var candidate in BuildConfigCandidates(stateDirectory))
+        {
+            yield return candidate;
+        }
+
+        if (!_directoryExists(stateDirectory))
+        {
+            yield break;
+        }
+
+        IEnumerable<string> jsonFiles;
+        try
+        {
+            jsonFiles = Directory.EnumerateFiles(stateDirectory, "*.json", SearchOption.TopDirectoryOnly);
+        }
+        catch (IOException)
+        {
+            yield break;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            yield break;
+        }
+
+        foreach (var jsonFile in jsonFiles)
+        {
+            yield return jsonFile;
         }
     }
 
@@ -413,6 +572,156 @@ public class OpenClawConnector(
         }
 
         return mcpObject["servers"] as JsonObject;
+    }
+
+    private static AgentRuntimeCatalog ParseRuntimeCatalog(string standardOutput)
+    {
+        var parsed = JsonNode.Parse(standardOutput, documentOptions: new JsonDocumentOptions
+        {
+            CommentHandling = JsonCommentHandling.Skip,
+            AllowTrailingCommas = true
+        }) as JsonObject ?? throw new JsonException("OpenClaw runtime catalog root must be a JSON object.");
+
+        var catalog = new AgentRuntimeCatalog
+        {
+            AgentId = parsed["agentId"]?.GetValue<string>() ?? string.Empty
+        };
+
+        if (parsed["groups"] is not JsonArray groups)
+        {
+            return catalog;
+        }
+
+        foreach (var groupNode in groups.OfType<JsonObject>())
+        {
+            var group = new AgentRuntimeGroup
+            {
+                Id = groupNode["id"]?.GetValue<string>() ?? string.Empty,
+                Label = groupNode["label"]?.GetValue<string>() ?? groupNode["id"]?.GetValue<string>() ?? string.Empty,
+                Source = groupNode["source"]?.GetValue<string>() ?? "runtime",
+                PluginId = groupNode["pluginId"]?.GetValue<string>()
+            };
+
+            if (groupNode["tools"] is JsonArray tools)
+            {
+                foreach (var toolNode in tools.OfType<JsonObject>())
+                {
+                    group.Tools.Add(new AgentRuntimeTool
+                    {
+                        Id = toolNode["id"]?.GetValue<string>() ?? string.Empty,
+                        Label = toolNode["label"]?.GetValue<string>() ?? toolNode["id"]?.GetValue<string>() ?? string.Empty,
+                        Description = toolNode["description"]?.GetValue<string>() ?? string.Empty,
+                        Source = toolNode["source"]?.GetValue<string>() ?? group.Source,
+                        PluginId = toolNode["pluginId"]?.GetValue<string>() ?? group.PluginId,
+                        Optional = toolNode["optional"]?.GetValue<bool>() ?? false
+                    });
+                }
+            }
+
+            catalog.Groups.Add(group);
+        }
+
+        return catalog;
+    }
+
+    private static AgentRuntimeCatalog CreateRuntimeCatalogError(string message)
+    {
+        return new AgentRuntimeCatalog
+        {
+            ErrorMessage = message
+        };
+    }
+
+    private static string SummarizeProcessError(string standardError, string standardOutput)
+    {
+        var message = !string.IsNullOrWhiteSpace(standardError) ? standardError : standardOutput;
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            return "unknown error";
+        }
+
+        var firstLine = message
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
+            .FirstOrDefault();
+
+        return string.IsNullOrWhiteSpace(firstLine) ? message.Trim() : firstLine.Trim();
+    }
+
+    private (string ConfigPath, string ConfiguredServerKey) ResolveConfigTarget(string configuredServerKey)
+    {
+        if (TryParseConfiguredServerKey(configuredServerKey, out var configPath, out var parsedServerKey))
+        {
+            return (configPath, parsedServerKey);
+        }
+
+        return (ResolveConfigPath(), configuredServerKey);
+    }
+
+    private static string BuildConfiguredServerKey(string primaryConfigPath, string configPath, string configuredServerKey)
+    {
+        return PathsEqual(primaryConfigPath, configPath)
+            ? configuredServerKey
+            : $"{ConfigScopePrefix}{NormalizeConfigPath(configPath)}::{configuredServerKey}";
+    }
+
+    private static bool TryParseConfiguredServerKey(string configuredServerKey, out string configPath, out string parsedServerKey)
+    {
+        configPath = string.Empty;
+        parsedServerKey = configuredServerKey;
+
+        if (!configuredServerKey.StartsWith(ConfigScopePrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var separatorIndex = configuredServerKey.IndexOf("::", ConfigScopePrefix.Length, StringComparison.Ordinal);
+        if (separatorIndex < 0)
+        {
+            return false;
+        }
+
+        var normalizedPath = configuredServerKey[ConfigScopePrefix.Length..separatorIndex];
+        parsedServerKey = configuredServerKey[(separatorIndex + 2)..];
+        if (string.IsNullOrWhiteSpace(normalizedPath) || string.IsNullOrWhiteSpace(parsedServerKey))
+        {
+            return false;
+        }
+
+        configPath = DenormalizeConfigPath(normalizedPath);
+        return true;
+    }
+
+    private static string NormalizeConfigPath(string configPath)
+    {
+        return configPath.Replace('\\', '/');
+    }
+
+    private static string DenormalizeConfigPath(string configPath)
+    {
+        return configPath.Replace('/', Path.DirectorySeparatorChar);
+    }
+
+    private static bool PathsEqual(string leftPath, string rightPath)
+    {
+        try
+        {
+            return string.Equals(
+                Path.GetFullPath(leftPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                Path.GetFullPath(rightPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                StringComparison.OrdinalIgnoreCase);
+        }
+        catch (ArgumentException)
+        {
+            return string.Equals(NormalizeConfigPath(leftPath), NormalizeConfigPath(rightPath), StringComparison.OrdinalIgnoreCase);
+        }
+        catch (NotSupportedException)
+        {
+            return string.Equals(NormalizeConfigPath(leftPath), NormalizeConfigPath(rightPath), StringComparison.OrdinalIgnoreCase);
+        }
+        catch (PathTooLongException)
+        {
+            return string.Equals(NormalizeConfigPath(leftPath), NormalizeConfigPath(rightPath), StringComparison.OrdinalIgnoreCase);
+        }
     }
 
     private static string ResolveCanonicalServerId(string configuredKey, JsonNode? serverNode)
@@ -779,5 +1088,48 @@ public class OpenClawConnector(
         }
 
         return await ReadConfigAsync(configPath);
+    }
+
+    private static async Task<(int ExitCode, string StandardOutput, string StandardError)> RunProcessAsync(
+        string fileName,
+        string arguments,
+        CancellationToken cancellationToken)
+    {
+        using var process = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = fileName,
+                Arguments = arguments,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            }
+        };
+
+        if (!process.Start())
+        {
+            throw new InvalidOperationException($"Failed to start process '{fileName}'.");
+        }
+
+        var standardOutputTask = process.StandardOutput.ReadToEndAsync();
+        var standardErrorTask = process.StandardError.ReadToEndAsync();
+
+        try
+        {
+            await process.WaitForExitAsync(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+            }
+
+            throw;
+        }
+
+        return (process.ExitCode, await standardOutputTask, await standardErrorTask);
     }
 }

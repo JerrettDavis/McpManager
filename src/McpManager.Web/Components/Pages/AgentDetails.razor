@@ -134,9 +134,145 @@
                                     </tbody>
                                 </table>
                             </div>
+
+                            @if (unmatchedConfiguredServers.Any())
+                            {
+                                <div class="mt-4">
+                                    <h6>Configured Entries Without Installed Match</h6>
+                                    <p class="text-muted small mb-3">
+                                        These entries exist in the agent configuration but do not currently map to a discovered local server record.
+                                    </p>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Configured Server</th>
+                                                    <th>Status</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var configuredServer in unmatchedConfiguredServers)
+                                                {
+                                                    <tr>
+                                                        <td>
+                                                            <strong>@configuredServer.ServerId</strong>
+                                                            <div class="small text-muted font-monospace text-break">@configuredServer.ConfiguredServerKey</div>
+                                                        </td>
+                                                        <td>
+                                                            <span class="badge @(configuredServer.IsEnabled ? "bg-success" : "bg-warning")">
+                                                                @(configuredServer.IsEnabled ? "✓ Enabled" : "⏸ Disabled")
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            <div class="btn-group btn-group-sm">
+                                                                <button class="btn btn-outline-primary"
+                                                                        @onclick="() => ToggleServerAsync(configuredServer.ConfiguredServerKey)">
+                                                                    @(configuredServer.IsEnabled ? "⏸ Disable" : "▶ Enable")
+                                                                </button>
+                                                                <button class="btn btn-outline-danger"
+                                                                        @onclick="() => RemoveServerAsync(configuredServer.ConfiguredServerKey)">
+                                                                    🗑️ Remove
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            }
                         }
                     </div>
                 </div>
+
+                @if (agent.RuntimeCatalog != null)
+                {
+                    <div class="card mt-3">
+                        <div class="card-header bg-dark text-white">
+                            <h5 class="mb-0">Live Runtime Tools</h5>
+                        </div>
+                        <div class="card-body">
+                            @if (!string.IsNullOrWhiteSpace(agent.RuntimeCatalog.ErrorMessage))
+                            {
+                                <div class="alert alert-warning mb-0">
+                                    <strong>Runtime unavailable:</strong> @agent.RuntimeCatalog.ErrorMessage
+                                </div>
+                            }
+                            else if (!agent.RuntimeCatalog.Groups.Any())
+                            {
+                                <div class="alert alert-info mb-0">
+                                    No live runtime tools detected.
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="alert alert-info small">
+                                    <strong>Read-only snapshot.</strong>
+                                    Runtime tools are queried from the running OpenClaw gateway and are not edited from this view.
+                                    @if (!string.IsNullOrWhiteSpace(agent.RuntimeCatalog.AgentId))
+                                    {
+                                        <span class="ms-1">Active OpenClaw agent: <code>@agent.RuntimeCatalog.AgentId</code></span>
+                                    }
+                                </div>
+
+                                @foreach (var runtimeGroup in agent.RuntimeCatalog.Groups)
+                                {
+                                    <div class="border rounded p-3 mb-3">
+                                        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+                                            <div>
+                                                <strong>@runtimeGroup.Label</strong>
+                                                <div class="small text-muted">@runtimeGroup.Tools.Count tool(s)</div>
+                                            </div>
+                                            <div class="d-flex flex-wrap gap-1">
+                                                <span class="badge bg-secondary">@runtimeGroup.Source</span>
+                                                @if (!string.IsNullOrWhiteSpace(runtimeGroup.PluginId))
+                                                {
+                                                    <span class="badge bg-info text-dark">@runtimeGroup.PluginId</span>
+                                                }
+                                            </div>
+                                        </div>
+
+                                        <div class="table-responsive">
+                                            <table class="table table-sm align-middle mb-0">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Tool</th>
+                                                        <th>Description</th>
+                                                        <th>Source</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var runtimeTool in runtimeGroup.Tools)
+                                                    {
+                                                        <tr>
+                                                            <td>
+                                                                <code>@runtimeTool.Label</code>
+                                                                @if (runtimeTool.Optional)
+                                                                {
+                                                                    <span class="badge bg-warning text-dark ms-2">Optional</span>
+                                                                }
+                                                            </td>
+                                                            <td>@runtimeTool.Description</td>
+                                                            <td>
+                                                                <span class="badge bg-secondary">@runtimeTool.Source</span>
+                                                                @if (!string.IsNullOrWhiteSpace(runtimeTool.PluginId))
+                                                                {
+                                                                    <span class="badge bg-info text-dark ms-1">@runtimeTool.PluginId</span>
+                                                                }
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                }
+                            }
+                        </div>
+                    </div>
+                }
             </div>
 
             <div class="col-md-4">
@@ -153,13 +289,28 @@
                             <dd><span class="badge bg-success">✓ Detected</span></dd>
 
                             <dt>Configured Servers</dt>
-                            <dd>@serverInstallations.Count(i => i.AgentId == AgentId)</dd>
+                            <dd>@agent.ConfiguredServers.Count</dd>
 
                             <dt>Active Servers</dt>
-                            <dd>@serverInstallations.Count(i => i.AgentId == AgentId && i.IsEnabled)</dd>
+                            <dd>@agent.ConfiguredServers.Count(configuredServer => configuredServer.IsEnabled)</dd>
 
                             <dt>Config Path</dt>
                             <dd class="small font-monospace text-break">@agent.ConfigPath</dd>
+
+                            @if (agent.RuntimeCatalog != null)
+                            {
+                                <dt>Live Runtime Tools</dt>
+                                <dd>
+                                    @if (!string.IsNullOrWhiteSpace(agent.RuntimeCatalog.ErrorMessage))
+                                    {
+                                        <span class="badge bg-warning text-dark">Unavailable</span>
+                                    }
+                                    else
+                                    {
+                                        @agent.RuntimeCatalog.Groups.Sum(group => group.Tools.Count)
+                                    }
+                                </dd>
+                            }
                         </dl>
                     </div>
                 </div>
@@ -190,11 +341,7 @@
     private string agentName = string.Empty;
     private List<McpServer> installedServers = [];
     private List<ServerInstallation> serverInstallations = [];
-
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadDataAsync();
-    }
+    private List<ConfiguredAgentServer> unmatchedConfiguredServers = [];
 
     protected override async Task OnParametersSetAsync()
     {
@@ -206,7 +353,7 @@
     private async Task LoadDataAsync()
     {
         syncError = null;
-        agent = await AgentManager.GetAgentByIdAsync(AgentId);
+        agent = await AgentManager.GetAgentByIdAsync(AgentId, includeRuntimeCatalog: true);
         agentName = agent?.Name ?? "Unknown Agent";
 
         if (agent != null)
@@ -307,6 +454,13 @@
             // Refresh installations after sync
             installations = await InstallationManager.GetInstallationsByAgentIdAsync(AgentId);
             serverInstallations = installations.ToList();
+            unmatchedConfiguredServers = agent.ConfiguredServers
+                .Where(configuredServer => !installedServers.Any(server => InstalledServerMatchesConfiguredServer(server, configuredServer.ServerId)))
+                .ToList();
+        }
+        else
+        {
+            unmatchedConfiguredServers = [];
         }
     }
 
@@ -338,5 +492,11 @@
     private async Task RefreshDataAsync()
     {
         await LoadDataAsync();
+    }
+
+    private static bool InstalledServerMatchesConfiguredServer(McpServer server, string configuredServerId)
+    {
+        return string.Equals(server.Id, configuredServerId, StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(server.Name, configuredServerId, StringComparison.OrdinalIgnoreCase);
     }
 }

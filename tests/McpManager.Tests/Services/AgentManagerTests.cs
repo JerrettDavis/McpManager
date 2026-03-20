@@ -192,6 +192,94 @@ public class AgentManagerTests
     }
 
     [Fact]
+    public async Task DetectInstalledAgentsAsync_DoesNotPopulateRuntimeCatalogByDefault()
+    {
+        var mockConnector = new Mock<IAgentConnector>();
+        var runtimeConnector = mockConnector.As<IAgentRuntimeConnector>();
+
+        mockConnector.Setup(c => c.AgentType).Returns(AgentType.OpenClaw);
+        mockConnector.Setup(c => c.IsAgentInstalledAsync()).ReturnsAsync(true);
+        mockConnector.Setup(c => c.GetConfigurationPathAsync()).ReturnsAsync("/path/to/openclaw.json");
+        mockConnector.Setup(c => c.GetConfiguredServersAsync()).ReturnsAsync([]);
+        runtimeConnector.Setup(c => c.GetRuntimeCatalogAsync()).ReturnsAsync(new AgentRuntimeCatalog
+        {
+            AgentId = "jdai-default",
+            Groups =
+            [
+                new AgentRuntimeGroup
+                {
+                    Id = "fs",
+                    Label = "Files",
+                    Source = "core",
+                    Tools =
+                    [
+                        new AgentRuntimeTool
+                        {
+                            Id = "read",
+                            Label = "read",
+                            Description = "Read file contents",
+                            Source = "core"
+                        }
+                    ]
+                }
+            ]
+        });
+
+        var agentManager = new AgentManager([mockConnector.Object]);
+
+        var agent = Assert.Single(await agentManager.DetectInstalledAgentsAsync());
+
+        Assert.Null(agent.RuntimeCatalog);
+        runtimeConnector.Verify(c => c.GetRuntimeCatalogAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetAgentByIdAsync_PopulatesRuntimeCatalogWhenRequested()
+    {
+        var mockConnector = new Mock<IAgentConnector>();
+        var runtimeConnector = mockConnector.As<IAgentRuntimeConnector>();
+
+        mockConnector.Setup(c => c.AgentType).Returns(AgentType.OpenClaw);
+        mockConnector.Setup(c => c.IsAgentInstalledAsync()).ReturnsAsync(true);
+        mockConnector.Setup(c => c.GetConfigurationPathAsync()).ReturnsAsync("/path/to/openclaw.json");
+        mockConnector.Setup(c => c.GetConfiguredServersAsync()).ReturnsAsync([]);
+        runtimeConnector.Setup(c => c.GetRuntimeCatalogAsync()).ReturnsAsync(new AgentRuntimeCatalog
+        {
+            AgentId = "jdai-default",
+            Groups =
+            [
+                new AgentRuntimeGroup
+                {
+                    Id = "fs",
+                    Label = "Files",
+                    Source = "core",
+                    Tools =
+                    [
+                        new AgentRuntimeTool
+                        {
+                            Id = "read",
+                            Label = "read",
+                            Description = "Read file contents",
+                            Source = "core"
+                        }
+                    ]
+                }
+            ]
+        });
+
+        var agentManager = new AgentManager([mockConnector.Object]);
+
+        var agent = await agentManager.GetAgentByIdAsync("openclaw", includeRuntimeCatalog: true);
+
+        Assert.NotNull(agent);
+        Assert.NotNull(agent!.RuntimeCatalog);
+        Assert.Equal("jdai-default", agent.RuntimeCatalog!.AgentId);
+        Assert.Single(agent.RuntimeCatalog.Groups);
+        Assert.Single(agent.RuntimeCatalog.Groups[0].Tools);
+        runtimeConnector.Verify(c => c.GetRuntimeCatalogAsync(), Times.Once);
+    }
+
+    [Fact]
     public async Task DetectInstalledAgentsAsync_UsesClaudeCodeDisplayName()
     {
         var mockConnector = new Mock<IAgentConnector>();
