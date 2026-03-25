@@ -11,6 +11,7 @@ env:
   DOTNET_VERSION: '10.0.x'
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
+  HAS_CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN != '' }}
 
 permissions:
   contents: read
@@ -49,7 +50,7 @@ jobs:
       run: dotnet test --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
     
     - name: Upload coverage reports to Codecov
-      if: ${{ secrets.CODECOV_TOKEN != '' }}
+      if: ${{ env.HAS_CODECOV_TOKEN == 'true' }}
       uses: codecov/codecov-action@v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
@@ -57,7 +58,7 @@ jobs:
         fail_ci_if_error: true
     
     - name: Upload coverage reports to Codecov (OIDC fallback)
-      if: ${{ secrets.CODECOV_TOKEN == '' }}
+      if: ${{ env.HAS_CODECOV_TOKEN != 'true' }}
       uses: codecov/codecov-action@v5
       with:
         use_oidc: true
