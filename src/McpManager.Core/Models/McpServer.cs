@@ -59,4 +59,19 @@ public class McpServer
     /// Configuration settings specific to this server.
     /// </summary>
     public Dictionary<string, string> Configuration { get; set; } = new();
+
+    /// <summary>
+    /// Homepage URL for the server project.
+    /// </summary>
+    public string? HomepageUrl { get; set; }
+
+    /// <summary>
+    /// Whether this server is verified by the registry.
+    /// </summary>
+    public bool IsVerified { get; set; }
+
+    /// <summary>
+    /// Whether this server is recommended by the registry.
+    /// </summary>
+    public bool IsRecommended { get; set; }
 }
