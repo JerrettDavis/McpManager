@@ -37,6 +37,7 @@ builder.Services.AddHostedService<RegistryRefreshWorker>();
 builder.Services.AddHostedService<AgentServerSyncWorker>();
 builder.Services.AddHostedService<DownloadStatsWorker>();
 builder.Services.AddHostedService<ConfigurationWatcherWorker>();
+builder.Services.AddHostedService<HealthCheckWorker>();
 
 var app = builder.Build();
 

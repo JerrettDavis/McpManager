@@ -57,6 +57,7 @@ public static class ServiceCollectionExtensions
         // Register repositories
         services.AddScoped<IServerRepository, ServerRepository>();
         services.AddScoped<IRegistryCacheRepository, RegistryCacheRepository>();
+        services.AddScoped<IHealthCheckRepository, HealthCheckRepository>();
 
         // Register HttpClients for package registries
         services.AddHttpClient("NpmRegistry", client =>
@@ -141,7 +142,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IConfigurationService, ConfigurationService>();
         services.AddSingleton<IAgentManager, AgentManager>();
         services.AddSingleton<ICollection<ServerInstallation>, List<ServerInstallation>>(_ => []);
-        services.AddSingleton<IServerMonitor, ServerMonitor>();
+        services.AddScoped<IServerMonitor, ServerMonitor>();
         services.AddSingleton<IConfigurationWatcher, ConfigurationWatcher>();
         services.AddSingleton<ConfigurationParser>();
 
