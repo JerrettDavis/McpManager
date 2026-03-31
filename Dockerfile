@@ -2,8 +2,9 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-# Copy solution and project files
+# Copy solution, central package management, and project files
 COPY ["McpManager.sln", "./"]
+COPY ["Directory.Packages.props", "./"]
 COPY ["src/McpManager.Core/McpManager.Core.csproj", "src/McpManager.Core/"]
 COPY ["src/McpManager.Application/McpManager.Application.csproj", "src/McpManager.Application/"]
 COPY ["src/McpManager.Infrastructure/McpManager.Infrastructure.csproj", "src/McpManager.Infrastructure/"]
