@@ -1,3 +1,5 @@
+using McpManager.Core.Models;
+
 namespace McpManager.Core.Interfaces;
 
 /// <summary>
@@ -25,6 +27,10 @@ public interface IServerMonitor
     /// Stops monitoring a server.
     /// </summary>
     Task StopMonitoringAsync(string serverId);
+    Task<IEnumerable<ServerHealthSummary>> GetAllHealthSummariesAsync();
+    Task<ServerHealthSummary?> GetHealthSummaryAsync(string serverId);
+    Task<HealthCheckResult> PerformHealthCheckAsync(string serverId);
+    IReadOnlySet<string> GetMonitoredServerIds();
 }
 
 /// <summary>
