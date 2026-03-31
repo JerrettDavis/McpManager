@@ -12,6 +12,7 @@ public class McpManagerDbContext(DbContextOptions<McpManagerDbContext> options) 
     public DbSet<InstalledServerEntity> InstalledServers => Set<InstalledServerEntity>();
     public DbSet<CachedRegistryServerEntity> CachedRegistryServers => Set<CachedRegistryServerEntity>();
     public DbSet<RegistryMetadataEntity> RegistryMetadata => Set<RegistryMetadataEntity>();
+    public DbSet<HealthCheckEntity> HealthChecks => Set<HealthCheckEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -66,6 +67,19 @@ public class McpManagerDbContext(DbContextOptions<McpManagerDbContext> options) 
             entity.Property(e => e.LastRefreshError).HasMaxLength(2000);
 
             entity.HasIndex(e => e.NextRefreshAt);
+        });
+
+        // Configure HealthCheckEntity
+        modelBuilder.Entity<HealthCheckEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ServerId).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.CheckedAt).IsRequired();
+            entity.Property(e => e.ErrorMessage).HasMaxLength(2000);
+
+            entity.HasIndex(e => e.ServerId);
+            entity.HasIndex(e => e.CheckedAt);
+            entity.HasIndex(e => new { e.ServerId, e.CheckedAt });
         });
     }
 }
