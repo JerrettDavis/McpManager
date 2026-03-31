@@ -5,6 +5,7 @@
 @inject IAgentManager AgentManager
 @inject IInstallationManager InstallationManager
 @inject IConflictDetector ConflictDetector
+@inject IServerMonitor ServerMonitor
 
 <PageTitle>MCP Manager - Dashboard</PageTitle>
 
@@ -52,6 +53,34 @@
                         <strong>@conflictCount conflict(s) detected</strong> across your MCP server configurations.
                     </div>
                     <a href="/conflicts" class="btn btn-sm btn-warning">View Conflicts</a>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (healthSummaries.Any())
+    {
+        <div class="row mb-4">
+            <div class="col">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Fleet Health</h5>
+                        <a href="/health" class="btn btn-sm btn-outline-primary">View Details</a>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex gap-3 flex-wrap">
+                            @foreach (var summary in healthSummaries.OrderBy(s => s.Status))
+                            {
+                                <div class="d-flex align-items-center gap-1">
+                                    <span class="badge @GetHealthBadge(summary.Status)"
+                                          style="width: 12px; height: 12px; border-radius: 50%; padding: 0;"
+                                          title="@summary.Status">&nbsp;</span>
+                                    <small class="text-truncate" style="max-width: 120px;"
+                                           title="@summary.ServerName">@summary.ServerName</small>
+                                </div>
+                            }
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -119,6 +148,7 @@
     private IEnumerable<Agent> detectedAgents = [];
     private IEnumerable<ServerInstallation> activeInstallations = [];
     private int conflictCount;
+    private List<ServerHealthSummary> healthSummaries = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -132,5 +162,14 @@
         activeInstallations = await InstallationManager.GetAllInstallationsAsync();
         var conflicts = await ConflictDetector.DetectAllConflictsAsync();
         conflictCount = conflicts.Count;
+        healthSummaries = (await ServerMonitor.GetAllHealthSummariesAsync()).ToList();
     }
+
+    private static string GetHealthBadge(HealthStatus status) => status switch
+    {
+        HealthStatus.Healthy => "bg-success",
+        HealthStatus.Degraded => "bg-warning",
+        HealthStatus.Failing => "bg-danger",
+        _ => "bg-secondary"
+    };
 }
