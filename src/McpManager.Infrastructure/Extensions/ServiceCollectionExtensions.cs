@@ -3,7 +3,9 @@ using McpManager.Application.Services;
 using McpManager.Core.Models;
 using McpManager.Infrastructure.Connectors;
 using McpManager.Infrastructure.Registries;
+using McpManager.Infrastructure.Import;
 using McpManager.Infrastructure.Services;
+using McpManager.Infrastructure.Templates;
 using McpManager.Infrastructure.Persistence;
 using McpManager.Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -112,14 +114,30 @@ public static class ServiceCollectionExtensions
             var factory = sp.GetRequiredService<IHttpClientFactory>();
             var client = factory.CreateClient("ModelContextProtocolGitHubRegistry");
             var innerRegistry = new ModelContextProtocolGitHubRegistry(client);
-            
+
             // Wrap with caching for better performance - use service provider to get scoped dependencies when needed
+            return new CachedServerRegistry(innerRegistry, sp);
+        });
+
+        services.AddHttpClient("SmitheryRegistry", client =>
+        {
+            client.BaseAddress = new Uri("https://registry.smithery.ai/");
+            client.DefaultRequestHeaders.Add("User-Agent", "McpManager/1.0");
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
+        services.AddSingleton<IServerRegistry>(sp =>
+        {
+            var factory = sp.GetRequiredService<IHttpClientFactory>();
+            var client = factory.CreateClient("SmitheryRegistry");
+            var innerRegistry = new SmitheryRegistry(client);
+
             return new CachedServerRegistry(innerRegistry, sp);
         });
 
         // Register application services
         services.AddScoped<IServerManager, ServerManager>();
         services.AddScoped<IInstallationManager, InstallationManager>();
+        services.AddScoped<IConflictDetector, ConflictDetector>();
         services.AddScoped<IConfigurationService, ConfigurationService>();
         services.AddSingleton<IAgentManager, AgentManager>();
         services.AddSingleton<ICollection<ServerInstallation>, List<ServerInstallation>>(_ => []);
@@ -127,12 +145,18 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IConfigurationWatcher, ConfigurationWatcher>();
         services.AddSingleton<ConfigurationParser>();
 
+        // Register template provider
+        services.AddScoped<ITemplateProvider, BuiltInTemplateProvider>();
+
         // Register agent connectors
         services.AddSingleton<IAgentConnector, ClaudeConnector>();
         services.AddSingleton<IAgentConnector, CopilotConnector>();
         services.AddSingleton<IAgentConnector, ClaudeCodeConnector>();
         services.AddSingleton<IAgentConnector, CodexConnector>();
         services.AddSingleton<IAgentConnector, OpenClawConnector>();
+
+        // Config import
+        services.AddScoped<IConfigImporter, ConfigImporter>();
 
         // Register mock registry for demo/fallback, wrapped with caching
         services.AddSingleton<IServerRegistry>(sp =>

@@ -1,0 +1,223 @@
+@page "/conflicts"
+@using McpManager.Core.Interfaces
+@using McpManager.Core.Models
+@inject IConflictDetector ConflictDetector
+@inject IInstallationManager InstallationManager
+@inject IAgentManager AgentManager
+
+<PageTitle>MCP Manager - Conflicts</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="display-4">Conflicts</h1>
+            <p class="lead">Version and configuration conflicts across your AI agents</p>
+        </div>
+        <div class="col-auto d-flex align-items-center">
+            <button class="btn btn-primary" @onclick="ScanForConflicts" disabled="@isScanning">
+                @if (isScanning)
+                {
+                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                    <span>Scanning...</span>
+                }
+                else
+                {
+                    <span>Re-scan</span>
+                }
+            </button>
+        </div>
+    </div>
+
+    @if (!hasLoaded)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (!conflicts.Any())
+    {
+        <div class="alert alert-success">
+            <strong>No conflicts detected.</strong> All servers are consistent across your agents.
+        </div>
+    }
+    else
+    {
+        <div class="row mb-3">
+            <div class="col">
+                <span class="badge bg-warning text-dark fs-6">@conflicts.Count conflict(s) found</span>
+            </div>
+        </div>
+
+        @foreach (var conflict in conflicts)
+        {
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center @GetConflictHeaderClass(conflict.Type)">
+                    <div>
+                        <h5 class="mb-0">
+                            @GetConflictIcon(conflict.Type) @conflict.ServerId
+                            <span class="badge bg-light text-dark ms-2">@conflict.Type</span>
+                        </h5>
+                    </div>
+                    <small>Detected @conflict.DetectedAt.ToString("g")</small>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-3">@conflict.Summary</p>
+
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Agent</th>
+                                    <th>Config Key</th>
+                                    @foreach (var key in GetAllConfigKeys(conflict))
+                                    {
+                                        <th>@key</th>
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var entry in conflict.Entries)
+                                {
+                                    <tr>
+                                        <td><strong>@entry.AgentName</strong></td>
+                                        <td><code>@entry.ConfiguredServerKey</code></td>
+                                        @foreach (var key in GetAllConfigKeys(conflict))
+                                        {
+                                            var value = entry.RawConfig.GetValueOrDefault(key, "");
+                                            var isDifferent = IsValueDifferent(conflict, key, value);
+                                            <td class="@(isDifferent ? "table-warning" : "")">
+                                                <code class="text-break">@TruncateValue(value)</code>
+                                            </td>
+                                        }
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    @if (conflict.Type != ConflictType.Duplicate)
+                    {
+                        <div class="mt-3">
+                            <span class="text-muted me-2">Resolve:</span>
+                            @foreach (var entry in conflict.Entries)
+                            {
+                                <button class="btn btn-sm btn-outline-primary me-1"
+                                        @onclick="() => SyncAllToAgent(conflict, entry)"
+                                        disabled="@isResolving">
+                                    Sync all to @entry.AgentName
+                                </button>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    }
+
+    @if (!string.IsNullOrEmpty(statusMessage))
+    {
+        <div class="alert @statusAlertClass alert-dismissible fade show mt-3" role="alert">
+            @statusMessage
+            <button type="button" class="btn-close" @onclick="() => statusMessage = null"></button>
+        </div>
+    }
+</div>
+
+@code {
+    private IReadOnlyList<ServerConflict> conflicts = [];
+    private bool hasLoaded;
+    private bool isScanning;
+    private bool isResolving;
+    private string? statusMessage;
+    private string statusAlertClass = "alert-info";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ScanForConflicts();
+        hasLoaded = true;
+    }
+
+    private async Task ScanForConflicts()
+    {
+        isScanning = true;
+        try
+        {
+            conflicts = await ConflictDetector.DetectAllConflictsAsync();
+        }
+        finally
+        {
+            isScanning = false;
+        }
+    }
+
+    private async Task SyncAllToAgent(ServerConflict conflict, AgentConflictEntry sourceEntry)
+    {
+        isResolving = true;
+        try
+        {
+            var targetEntries = conflict.Entries
+                .Where(e => e.AgentId != sourceEntry.AgentId)
+                .ToList();
+
+            foreach (var target in targetEntries)
+            {
+                await InstallationManager.RemoveServerFromAgentAsync(conflict.ServerId, target.AgentId);
+                await InstallationManager.AddServerToAgentAsync(conflict.ServerId, target.AgentId, new Dictionary<string, string>(sourceEntry.RawConfig));
+            }
+
+            statusMessage = $"Synced '{conflict.ServerId}' across all agents to match {sourceEntry.AgentName}'s configuration.";
+            statusAlertClass = "alert-success";
+
+            await ScanForConflicts();
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"Failed to resolve conflict: {ex.Message}";
+            statusAlertClass = "alert-danger";
+        }
+        finally
+        {
+            isResolving = false;
+        }
+    }
+
+    private static string GetConflictHeaderClass(ConflictType type) => type switch
+    {
+        ConflictType.VersionMismatch => "bg-warning text-dark",
+        ConflictType.ConfigMismatch => "bg-info text-white",
+        ConflictType.Duplicate => "bg-secondary text-white",
+        _ => ""
+    };
+
+    private static string GetConflictIcon(ConflictType type) => type switch
+    {
+        ConflictType.VersionMismatch => "\u26a0\ufe0f",
+        ConflictType.ConfigMismatch => "\ud83d\udd27",
+        ConflictType.Duplicate => "\ud83d\udccb",
+        _ => ""
+    };
+
+    private static List<string> GetAllConfigKeys(ServerConflict conflict)
+    {
+        return conflict.Entries
+            .SelectMany(e => e.RawConfig.Keys)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(k => k)
+            .ToList();
+    }
+
+    private static bool IsValueDifferent(ServerConflict conflict, string key, string value)
+    {
+        return conflict.Entries
+            .Select(e => e.RawConfig.GetValueOrDefault(key, ""))
+            .Distinct()
+            .Count() > 1;
+    }
+
+    private static string TruncateValue(string value)
+    {
+        return value.Length > 80 ? value[..77] + "..." : value;
+    }
+}
