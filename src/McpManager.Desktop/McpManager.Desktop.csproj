@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
-
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
@@ -7,7 +6,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>McpManager.Desktop</RootNamespace>
   </PropertyGroup>
-  
   <!-- Single-file executable configuration (only for publish) -->
   <PropertyGroup Condition="'$(PublishSingleFile)' == 'true' or '$(RuntimeIdentifier)' != ''">
     <SelfContained>true</SelfContained>
@@ -15,33 +13,28 @@
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
-    
     <!-- Optimize for startup and size -->
     <PublishReadyToRun>false</PublishReadyToRun>
     <TieredCompilation>true</TieredCompilation>
     <TieredCompilationQuickJit>true</TieredCompilationQuickJit>
   </PropertyGroup>
-
   <ItemGroup>
-    <PackageReference Include="Photino.Blazor" Version="3.2.0" />
-    <PackageReference Include="Nerdbank.GitVersioning" Version="3.9.50">
+    <PackageReference Include="Photino.Blazor" />
+    <PackageReference Include="Nerdbank.GitVersioning">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.5" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\McpManager.Core\McpManager.Core.csproj" />
     <ProjectReference Include="..\McpManager.Application\McpManager.Application.csproj" />
     <ProjectReference Include="..\McpManager.Infrastructure\McpManager.Infrastructure.csproj" />
     <ProjectReference Include="..\McpManager.Web\McpManager.Web.csproj" />
   </ItemGroup>
-
   <ItemGroup>
     <Content Update="wwwroot\index.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
-
 </Project>
