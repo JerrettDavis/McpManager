@@ -12,6 +12,8 @@
 
 MCP Manager is a dashboard for discovering, installing, and managing Model Context Protocol servers across multiple AI agents.
 
+![Dashboard](docs/screenshots/dashboard.png)
+
 ## Features
 
 - Browse and search MCP servers from registries
@@ -22,6 +24,38 @@ MCP Manager is a dashboard for discovering, installing, and managing Model Conte
 - Plugin-based architecture for extensibility
 - Docker support for containerized deployment
 - Comprehensive unit test coverage
+
+## Screenshots
+
+<details>
+<summary>Browse & Install Servers</summary>
+
+![Browse Servers](docs/screenshots/browse-servers.png)
+</details>
+
+<details>
+<summary>Detected AI Agents</summary>
+
+![Agents](docs/screenshots/agents.png)
+</details>
+
+<details>
+<summary>Server Health Dashboard</summary>
+
+![Health Dashboard](docs/screenshots/health.png)
+</details>
+
+<details>
+<summary>Conflict Detection</summary>
+
+![Conflicts](docs/screenshots/conflicts.png)
+</details>
+
+<details>
+<summary>Installed Servers</summary>
+
+![Installed Servers](docs/screenshots/installed-servers.png)
+</details>
 
 ## Architecture
 
