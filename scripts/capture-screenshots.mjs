@@ -1,10 +1,8 @@
 #!/usr/bin/env node
 /**
  * Captures screenshots of all key MCPManager pages using Playwright.
+ * Captures both light and dark mode variants.
  * Usage: node scripts/capture-screenshots.mjs [--base-url http://localhost:5000]
- *
- * The script starts the McpManager.Web server, waits for it to be ready,
- * captures screenshots of each page, then shuts down the server.
  */
 
 import { chromium } from 'playwright';
@@ -24,6 +22,11 @@ const pages = [
   { name: 'agents', path: '/agents', title: 'Agents' },
   { name: 'health', path: '/health', title: 'Server Health' },
   { name: 'conflicts', path: '/conflicts', title: 'Conflicts' },
+];
+
+const themes = [
+  { name: 'light', colorScheme: 'light' },
+  { name: 'dark', colorScheme: 'dark' },
 ];
 
 const args = process.argv.slice(2);
@@ -52,7 +55,6 @@ async function startServer() {
     }
   });
 
-  // Wait for server to be ready
   const maxWait = 30_000;
   const start = Date.now();
   while (Date.now() - start < maxWait) {
@@ -75,9 +77,7 @@ async function main() {
     mkdirSync(outputDir, { recursive: true });
   }
 
-  // Start server if no base URL provided
   if (!baseUrl) {
-    // Build first
     console.log('Building McpManager.Web...');
     const build = spawn('dotnet', ['build', resolve(projectRoot, 'src', 'McpManager.Web')], {
       stdio: 'inherit',
@@ -90,40 +90,48 @@ async function main() {
   }
 
   console.log(`Capturing screenshots from ${baseUrl}...`);
+  let totalCaptured = 0;
 
   const browser = await chromium.launch();
-  const context = await browser.newContext({
-    viewport: { width: 1280, height: 800 },
-    deviceScaleFactor: 2,
-  });
 
   try {
-    for (const page of pages) {
-      const tab = await context.newPage();
-      const url = `${baseUrl}${page.path}`;
-      console.log(`  ${page.title} (${url})...`);
+    for (const theme of themes) {
+      console.log(`\n${theme.name.toUpperCase()} MODE:`);
+      const context = await browser.newContext({
+        viewport: { width: 1280, height: 800 },
+        deviceScaleFactor: 2,
+        colorScheme: theme.colorScheme,
+      });
 
-      await tab.goto(url, { waitUntil: 'networkidle', timeout: 15_000 });
-      // Give Blazor a moment to render
-      await tab.waitForTimeout(1000);
+      for (const page of pages) {
+        const tab = await context.newPage();
+        const url = `${baseUrl}${page.path}`;
+        console.log(`  ${page.title} (${url})...`);
 
-      const outputPath = resolve(outputDir, `${page.name}.png`);
-      await tab.screenshot({ path: outputPath, fullPage: true });
-      console.log(`    -> ${outputPath}`);
-      await tab.close();
+        await tab.goto(url, { waitUntil: 'networkidle', timeout: 15_000 });
+        await tab.waitForTimeout(1000);
+
+        const filename = `${page.name}-${theme.name}.png`;
+        const outputPath = resolve(outputDir, filename);
+        await tab.screenshot({ path: outputPath, fullPage: true });
+        console.log(`    -> ${filename}`);
+        totalCaptured++;
+        await tab.close();
+      }
+
+      await context.close();
     }
   } finally {
     await browser.close();
     if (serverProcess) {
-      console.log('Stopping server...');
+      console.log('\nStopping server...');
       serverProcess.kill('SIGTERM');
-      // Give it a moment to clean up
       await new Promise(r => setTimeout(r, 1000));
       if (!serverProcess.killed) serverProcess.kill('SIGKILL');
     }
   }
 
-  console.log(`\nDone! ${pages.length} screenshots saved to docs/screenshots/`);
+  console.log(`\nDone! ${totalCaptured} screenshots saved to docs/screenshots/`);
 }
 
 main().catch((err) => {

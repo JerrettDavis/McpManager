@@ -12,7 +12,9 @@
 
 MCP Manager is a dashboard for discovering, installing, and managing Model Context Protocol servers across multiple AI agents.
 
-![Dashboard](docs/screenshots/dashboard.png)
+| Light Mode | Dark Mode |
+|:---:|:---:|
+| ![Dashboard Light](docs/screenshots/dashboard-light.png) | ![Dashboard Dark](docs/screenshots/dashboard-dark.png) |
 
 ## Features
 
@@ -30,31 +32,41 @@ MCP Manager is a dashboard for discovering, installing, and managing Model Conte
 <details>
 <summary>Browse & Install Servers</summary>
 
-![Browse Servers](docs/screenshots/browse-servers.png)
+| Light | Dark |
+|:---:|:---:|
+| ![Browse Light](docs/screenshots/browse-servers-light.png) | ![Browse Dark](docs/screenshots/browse-servers-dark.png) |
 </details>
 
 <details>
 <summary>Detected AI Agents</summary>
 
-![Agents](docs/screenshots/agents.png)
+| Light | Dark |
+|:---:|:---:|
+| ![Agents Light](docs/screenshots/agents-light.png) | ![Agents Dark](docs/screenshots/agents-dark.png) |
 </details>
 
 <details>
 <summary>Server Health Dashboard</summary>
 
-![Health Dashboard](docs/screenshots/health.png)
+| Light | Dark |
+|:---:|:---:|
+| ![Health Light](docs/screenshots/health-light.png) | ![Health Dark](docs/screenshots/health-dark.png) |
 </details>
 
 <details>
 <summary>Conflict Detection</summary>
 
-![Conflicts](docs/screenshots/conflicts.png)
+| Light | Dark |
+|:---:|:---:|
+| ![Conflicts Light](docs/screenshots/conflicts-light.png) | ![Conflicts Dark](docs/screenshots/conflicts-dark.png) |
 </details>
 
 <details>
 <summary>Installed Servers</summary>
 
-![Installed Servers](docs/screenshots/installed-servers.png)
+| Light | Dark |
+|:---:|:---:|
+| ![Installed Light](docs/screenshots/installed-servers-light.png) | ![Installed Dark](docs/screenshots/installed-servers-dark.png) |
 </details>
 
 ## Architecture
