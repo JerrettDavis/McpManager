@@ -1,0 +1,58 @@
+name: Update Screenshots
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Run weekly on Wednesdays at 6am UTC
+    - cron: '0 6 * * 3'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  capture-screenshots:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Build application
+        run: dotnet build src/McpManager.Web
+
+      - name: Capture screenshots
+        run: node scripts/capture-screenshots.mjs
+
+      - name: Check for changes
+        id: changes
+        run: |
+          git add docs/screenshots/
+          if git diff --staged --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create PR with updated screenshots
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          BRANCH="chore/update-screenshots-$(date +%Y%m%d)"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git commit -m "chore: update screenshots [automated]"
+          git push origin "$BRANCH"
+          gh pr create \
+            --title "chore: update screenshots" \
+            --body "Automated screenshot update from the weekly workflow." \
+            --label "documentation"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
