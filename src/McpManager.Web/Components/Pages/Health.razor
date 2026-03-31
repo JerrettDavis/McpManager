@@ -1,0 +1,188 @@
+@page "/health"
+@using McpManager.Core.Interfaces
+@using McpManager.Core.Models
+@inject IServerMonitor ServerMonitor
+
+<PageTitle>Server Health Dashboard</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="display-4">Server Health</h1>
+            <p class="lead">Real-time health status of all MCP servers</p>
+        </div>
+        <div class="col-auto d-flex align-items-center">
+            <button class="btn btn-primary" @onclick="RefreshAsync" disabled="@isLoading">
+                @if (isLoading)
+                {
+                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                    <span>Refreshing...</span>
+                }
+                else
+                {
+                    <span>Refresh</span>
+                }
+            </button>
+        </div>
+    </div>
+
+    @if (isLoading && !summaries.Any())
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (!summaries.Any())
+    {
+        <div class="alert alert-info">
+            <strong>No servers found.</strong> Install MCP servers to see their health status.
+        </div>
+    }
+    else
+    {
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card border-success">
+                    <div class="card-body text-center">
+                        <h3 class="text-success">@summaries.Count(s => s.Status == HealthStatus.Healthy)</h3>
+                        <small class="text-muted">Healthy</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-warning">
+                    <div class="card-body text-center">
+                        <h3 class="text-warning">@summaries.Count(s => s.Status == HealthStatus.Degraded)</h3>
+                        <small class="text-muted">Degraded</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-danger">
+                    <div class="card-body text-center">
+                        <h3 class="text-danger">@summaries.Count(s => s.Status == HealthStatus.Failing)</h3>
+                        <small class="text-muted">Failing</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-secondary">
+                    <div class="card-body text-center">
+                        <h3 class="text-secondary">@summaries.Count(s => s.Status == HealthStatus.Unknown)</h3>
+                        <small class="text-muted">Unknown</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            @foreach (var summary in summaries.OrderBy(s => s.Status).ThenBy(s => s.ServerName))
+            {
+                <div class="col-md-4 col-lg-3 mb-3">
+                    <div class="card h-100 @GetCardBorderClass(summary.Status)"
+                         style="cursor: pointer;"
+                         @onclick="() => ToggleDetail(summary.ServerId)">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <h6 class="card-title mb-1 text-truncate" title="@summary.ServerName">
+                                    @summary.ServerName
+                                </h6>
+                                <span class="badge @GetBadgeClass(summary.Status)">
+                                    @summary.Status
+                                </span>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted d-block">
+                                    Last check: @(summary.LastCheckedAt?.ToString("HH:mm:ss") ?? "Never")
+                                </small>
+                                <small class="text-muted d-block">
+                                    Response: @(summary.LastResponseTimeMs?.ToString() ?? "N/A") ms
+                                </small>
+                                <small class="text-muted d-block">
+                                    Error rate: @summary.ErrorRatePercent.ToString("F1")%
+                                    (@summary.FailedChecks/@summary.TotalChecks)
+                                </small>
+                            </div>
+                        </div>
+
+                        @if (expandedServerId == summary.ServerId)
+                        {
+                            <div class="card-footer bg-light">
+                                <h6 class="mb-2">Recent Checks</h6>
+                                @if (summary.RecentChecks.Any())
+                                {
+                                    <div class="list-group list-group-flush"
+                                         style="max-height: 200px; overflow-y: auto;">
+                                        @foreach (var check in summary.RecentChecks.Take(10))
+                                        {
+                                            <div class="list-group-item px-0 py-1 d-flex justify-content-between">
+                                                <small>
+                                                    <span class="@(check.IsHealthy ? "text-success" : "text-danger")">
+                                                        @(check.IsHealthy ? "OK" : "FAIL")
+                                                    </span>
+                                                    @check.CheckedAt.ToString("HH:mm:ss")
+                                                </small>
+                                                <small class="text-muted">@check.ResponseTimeMs ms</small>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <small class="text-muted">No checks recorded yet</small>
+                                }
+                                @if (!string.IsNullOrEmpty(summary.LastErrorMessage))
+                                {
+                                    <div class="alert alert-danger mt-2 mb-0 py-1 px-2">
+                                        <small>@summary.LastErrorMessage</small>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<ServerHealthSummary> summaries = [];
+    private bool isLoading = true;
+    private string? expandedServerId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshAsync();
+    }
+
+    private async Task RefreshAsync()
+    {
+        isLoading = true;
+        summaries = (await ServerMonitor.GetAllHealthSummariesAsync()).ToList();
+        isLoading = false;
+    }
+
+    private void ToggleDetail(string serverId)
+    {
+        expandedServerId = expandedServerId == serverId ? null : serverId;
+    }
+
+    private static string GetBadgeClass(HealthStatus status) => status switch
+    {
+        HealthStatus.Healthy => "bg-success",
+        HealthStatus.Degraded => "bg-warning text-dark",
+        HealthStatus.Failing => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    private static string GetCardBorderClass(HealthStatus status) => status switch
+    {
+        HealthStatus.Healthy => "border-success",
+        HealthStatus.Degraded => "border-warning",
+        HealthStatus.Failing => "border-danger",
+        _ => "border-secondary"
+    };
+}
