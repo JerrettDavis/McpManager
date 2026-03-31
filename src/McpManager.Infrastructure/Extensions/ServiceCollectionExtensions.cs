@@ -137,6 +137,7 @@ public static class ServiceCollectionExtensions
         // Register application services
         services.AddScoped<IServerManager, ServerManager>();
         services.AddScoped<IInstallationManager, InstallationManager>();
+        services.AddScoped<IConflictDetector, ConflictDetector>();
         services.AddScoped<IConfigurationService, ConfigurationService>();
         services.AddSingleton<IAgentManager, AgentManager>();
         services.AddSingleton<ICollection<ServerInstallation>, List<ServerInstallation>>(_ => []);

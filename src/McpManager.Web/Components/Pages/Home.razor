@@ -4,6 +4,7 @@
 @inject IServerManager ServerManager
 @inject IAgentManager AgentManager
 @inject IInstallationManager InstallationManager
+@inject IConflictDetector ConflictDetector
 
 <PageTitle>MCP Manager - Dashboard</PageTitle>
 
@@ -41,6 +42,20 @@
             </div>
         </div>
     </div>
+
+    @if (conflictCount > 0)
+    {
+        <div class="row mb-4">
+            <div class="col">
+                <div class="alert alert-warning d-flex justify-content-between align-items-center mb-0">
+                    <div>
+                        <strong>@conflictCount conflict(s) detected</strong> across your MCP server configurations.
+                    </div>
+                    <a href="/conflicts" class="btn btn-sm btn-warning">View Conflicts</a>
+                </div>
+            </div>
+        </div>
+    }
 
     <div class="row">
         <div class="col-md-6 mb-4">
@@ -103,6 +118,7 @@
     private IEnumerable<McpServer> installedServers = [];
     private IEnumerable<Agent> detectedAgents = [];
     private IEnumerable<ServerInstallation> activeInstallations = [];
+    private int conflictCount;
 
     protected override async Task OnInitializedAsync()
     {
@@ -114,5 +130,7 @@
         installedServers = await ServerManager.GetInstalledServersAsync();
         detectedAgents = await AgentManager.DetectInstalledAgentsAsync();
         activeInstallations = await InstallationManager.GetAllInstallationsAsync();
+        var conflicts = await ConflictDetector.DetectAllConflictsAsync();
+        conflictCount = conflicts.Count;
     }
 }
