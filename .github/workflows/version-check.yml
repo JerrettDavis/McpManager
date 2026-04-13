@@ -157,7 +157,7 @@ jobs:
     
     - name: Add comment to PR
       if: steps.update_version.outputs.updated == 'true'
-      uses: actions/github-script@v8
+      uses: actions/github-script@v9
       with:
         script: |
           const mainVersion = '${{ steps.main_version.outputs.version }}';
@@ -184,7 +184,7 @@ jobs:
     
     - name: Add warning comment if no conventional commit
       if: steps.version_type.outputs.warning == 'true'
-      uses: actions/github-script@v8
+      uses: actions/github-script@v9
       with:
         script: |
           const comment = `## ⚠️ Conventional Commit Format Recommended\n\n` +
