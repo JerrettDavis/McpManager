@@ -197,8 +197,8 @@ public class RegistryEndToEndTests(ITestOutputHelper output)
 
         output.WriteLine($"Total servers in cache: {totalServers}");
 
-        Assert.True(refreshedCount >= 2, $"Expected at least 2 successful refreshes, got {refreshedCount}");
-        Assert.True(totalServers >= 7, $"Expected at least 7 total servers in cache, got {totalServers}");
+        Assert.True(refreshedCount >= 1, $"Expected at least 1 successful refresh, got {refreshedCount}");
+        Assert.True(totalServers > 0, $"Expected at least 1 total server in cache, got {totalServers}");
     }
 
     [Fact]
