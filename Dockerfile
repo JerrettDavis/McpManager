@@ -1,5 +1,5 @@
 # Build stage
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0.300 AS build
 WORKDIR /src
 
 # Copy solution, central package management, and project files
@@ -22,7 +22,7 @@ RUN dotnet build "McpManager.Web.csproj" -c Release -o /app/build
 RUN dotnet publish "McpManager.Web.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 # Runtime stage
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.8 AS runtime
 WORKDIR /app
 
 # Create a non-root user (or use existing if UID conflicts)
