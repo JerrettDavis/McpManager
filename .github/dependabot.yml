@@ -1,25 +1,13 @@
+# Keep dependency PRs grouped and delayed for at least 48 hours so newly published packages age before adoption.
 version: 2
 updates:
-  - package-ecosystem: "nuget"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
-    labels:
-      - "dependencies"
-    commit-message:
-      prefix: "chore(deps)"
-    cooldown:
-      default-days: 2
-    groups:
-      all-dependencies:
-        patterns:
-          - "*"
-
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/Chicago"
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
@@ -29,7 +17,45 @@ updates:
     cooldown:
       default-days: 2
     groups:
-      all-dependencies:
+      github-actions-dependencies:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/Chicago"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore(deps)"
+    cooldown:
+      default-days: 2
+    groups:
+      nuget-dependencies:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/Chicago"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore(deps)"
+    cooldown:
+      default-days: 2
+    groups:
+      npm-dependencies:
         patterns:
           - "*"
 
@@ -37,6 +63,9 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/Chicago"
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
@@ -45,6 +74,6 @@ updates:
     cooldown:
       default-days: 2
     groups:
-      all-dependencies:
+      docker-dependencies:
         patterns:
           - "*"
