@@ -8,7 +8,6 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   capture-screenshots:
@@ -51,18 +50,12 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Create PR with updated screenshots
+      - name: Commit and push screenshot updates to main
         if: steps.changes.outputs.changed == 'true'
         run: |
-          BRANCH="chore/update-screenshots-$(date +%Y%m%d)"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -b "$BRANCH"
-          git commit -m "chore: update screenshots [automated]"
-          git push origin "$BRANCH"
-          gh pr create \
-            --title "chore: update screenshots" \
-            --body "Automated screenshot update from the weekly workflow." \
-            --label "documentation"
+          git commit -m "chore: update screenshots [automated] [skip ci]"
+          git push origin HEAD:main
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
