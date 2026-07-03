@@ -24,7 +24,15 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Install Playwright
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Node dependencies
+        run: npm install
+
+      - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
       - name: Build application
