@@ -33,13 +33,13 @@ jobs:
       version_tag: ${{ steps.get_version.outputs.version_tag }}
     
     steps:
-    - uses: actions/checkout@v7.0.0
+    - uses: actions/checkout@v7.0.1
       with:
         fetch-depth: 0
         ref: ${{ github.event_name == 'workflow_run' && 'main' || github.ref }}
     
     - name: Setup .NET
-      uses: actions/setup-dotnet@v5
+      uses: actions/setup-dotnet@v6
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
     
@@ -87,12 +87,12 @@ jobs:
             project: src/McpManager.Desktop/McpManager.Desktop.csproj
     
     steps:
-    - uses: actions/checkout@v7.0.0
+    - uses: actions/checkout@v7.0.1
       with:
         fetch-depth: 0
     
     - name: Setup .NET
-      uses: actions/setup-dotnet@v5
+      uses: actions/setup-dotnet@v6
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
     
@@ -141,7 +141,7 @@ jobs:
       packages: write
     
     steps:
-    - uses: actions/checkout@v7.0.0
+    - uses: actions/checkout@v7.0.1
       with:
         fetch-depth: 0
     
@@ -184,7 +184,7 @@ jobs:
       contents: write
     
     steps:
-    - uses: actions/checkout@v7.0.0
+    - uses: actions/checkout@v7.0.1
       with:
         fetch-depth: 0
     
