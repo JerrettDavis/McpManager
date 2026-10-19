@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   capture-screenshots:
@@ -50,12 +51,17 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Commit and push screenshot updates to main
+      - name: Commit screenshot updates and open a pull request
         if: steps.changes.outputs.changed == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -m "chore: update screenshots [automated] [skip ci]"
-          git push origin HEAD:main
+          branch="automation/update-screenshots"
+          git checkout -B "$branch"
+          git commit -m "chore: update screenshots [automated]"
+          git push --force origin "$branch"
+          if [ -z "$(gh pr list --head "$branch" --state open --json number --jq '.[0].number')" ]; then
+            gh pr create --base main --head "$branch"               --title "chore: update screenshots [automated]"               --body "Automated weekly screenshot refresh."
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
