@@ -136,12 +136,16 @@ public class DesktopAppBuildTests : IDisposable
         var startInfo = new ProcessStartInfo
         {
             FileName = "dotnet",
-            Arguments = $"{command} \"{projectPath}\" {args}",
+            Arguments = $"{command} \"{projectPath}\" {args} /p:UseSharedCompilation=false",
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
             CreateNoWindow = true
         };
+
+        // Reusable build processes can retain the redirected pipes after dotnet exits.
+        startInfo.Environment["MSBUILDDISABLENODEREUSE"] = "1";
+        startInfo.Environment["DOTNET_CLI_USE_MSBUILD_SERVER"] = "0";
 
         using var process = Process.Start(startInfo);
         if (process == null)
